@@ -1,13 +1,18 @@
 "use client";
 
-const TEAM_MEMBERS = [
-  { name: "Valerii K.", email: "valerophob@gmail.com", avatar: "VK", color: "from-amber-500 to-orange-600" },
-  { name: "Team Member 2", email: "pending@invite.com", avatar: "T2", color: "from-blue-500 to-cyan-600" },
-  { name: "Team Member 3", email: "pending@invite.com", avatar: "T3", color: "from-emerald-500 to-teal-600" },
-  { name: "Team Member 4", email: "pending@invite.com", avatar: "T4", color: "from-purple-500 to-pink-600" },
-];
+import { useEffect, useState } from "react";
 
-function ProgressRing({ pct, color }: { pct: number; color: string }) {
+type Member = {
+  email: string;
+  name: string;
+  avatar: string;
+  color: string;
+  questionsAnswered: number;
+  lastTopic: string;
+  pct: number;
+};
+
+function ProgressRing({ pct, color, id }: { pct: number; color: string; id: string }) {
   const r = 36;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
@@ -16,13 +21,13 @@ function ProgressRing({ pct, color }: { pct: number; color: string }) {
       <circle cx="40" cy="40" r={r} fill="none" stroke="#1f2937" strokeWidth="6" />
       <circle
         cx="40" cy="40" r={r} fill="none"
-        stroke={`url(#grad-${color})`}
+        stroke={`url(#grad-${id})`}
         strokeWidth="6" strokeLinecap="round"
         strokeDasharray={circ} strokeDashoffset={offset}
         className="transition-all duration-700"
       />
       <defs>
-        <linearGradient id={`grad-${color}`} x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id={`grad-${id}`} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor={color === "amber" ? "#f59e0b" : color === "blue" ? "#3b82f6" : color === "emerald" ? "#10b981" : "#a855f7"} />
           <stop offset="100%" stopColor={color === "amber" ? "#ea580c" : color === "blue" ? "#06b6d4" : color === "emerald" ? "#14b8a6" : "#ec4899"} />
         </linearGradient>
@@ -31,8 +36,23 @@ function ProgressRing({ pct, color }: { pct: number; color: string }) {
   );
 }
 
+const COLORS = ["amber", "blue", "emerald", "purple"];
+
 export default function TeamPage() {
-  const colors = ["amber", "blue", "emerald", "purple"];
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/team")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.members) setMembers(data.members);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return null;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -41,27 +61,20 @@ export default function TeamPage() {
         <p className="text-gray-500 text-sm mt-1">Training progress across all team members</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {TEAM_MEMBERS.map((m, i) => {
-          const isActive = i === 0;
-          const pct = isActive ? 12 : 0;
-          const lastTopic = isActive ? "React & Hooks" : "—";
-          const questionsAnswered = isActive ? 3 : 0;
-
-          return (
+      {members.length === 0 ? (
+        <p className="text-gray-500 text-sm">No team members yet. Add emails in Access.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {members.map((m, i) => (
             <div
-              key={i}
-              className={`relative rounded-xl border p-6 transition ${
-                isActive
-                  ? "bg-gray-800/60 border-gray-700"
-                  : "bg-gray-900/40 border-gray-800/50 opacity-60"
-              }`}
+              key={m.email}
+              className="relative rounded-xl border p-6 transition bg-gray-800/60 border-gray-700"
             >
               <div className="flex items-center gap-5">
                 <div className="relative">
-                  <ProgressRing pct={pct} color={colors[i]} />
+                  <ProgressRing pct={m.pct} color={COLORS[i % COLORS.length]} id={`team-${i}`} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-lg font-bold text-white">{pct}%</span>
+                    <span className="text-lg font-bold text-white">{m.pct}%</span>
                   </div>
                 </div>
 
@@ -71,34 +84,31 @@ export default function TeamPage() {
                       {m.avatar}
                     </div>
                     <h3 className="font-semibold text-white truncate">{m.name}</h3>
-                    {!isActive && (
-                      <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">Invited</span>
-                    )}
                   </div>
 
                   <div className="space-y-1.5 mt-3">
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">Last topic</span>
-                      <span className="text-gray-300">{lastTopic}</span>
+                      <span className="text-gray-300">{m.lastTopic}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">Questions answered</span>
-                      <span className="text-gray-300">{questionsAnswered}</span>
+                      <span className="text-gray-300">{m.questionsAnswered}</span>
                     </div>
                   </div>
 
                   <div className="mt-3 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full bg-gradient-to-r ${m.color}`}
-                      style={{ width: `${pct}%` }}
+                      style={{ width: `${m.pct}%` }}
                     />
                   </div>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
