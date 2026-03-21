@@ -94,9 +94,10 @@ sqlite.exec(`CREATE TABLE IF NOT EXISTS jobs (
   );
 `);
 
-const seedEmail = (process.env.PRIMARY_ADMIN_EMAIL || "admin@example.com").trim().toLowerCase().replace(/'/g, "''");
-sqlite.exec(`INSERT OR IGNORE INTO allowed_emails (id, email, added_at) VALUES ('seed-1', '${seedEmail}', datetime('now'))`);
-console.log(`[DB] Seeded allowed email: ${seedEmail}`);
+const seedEmail = (process.env.PRIMARY_ADMIN_EMAIL || "").trim().toLowerCase().replace(/'/g, "''");
+if (seedEmail) {
+  sqlite.exec(`INSERT OR IGNORE INTO allowed_emails (id, email, added_at) VALUES ('seed-1', '${seedEmail}', datetime('now'))`);
+}
 
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN test_cases TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN starter_code TEXT"); } catch {}
