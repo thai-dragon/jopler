@@ -58,6 +58,8 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       if (!user.email) return false;
       const email = user.email.toLowerCase();
+      const primaryAdmin = (process.env.PRIMARY_ADMIN_EMAIL || "").trim().toLowerCase();
+      if (primaryAdmin && email === primaryAdmin) return true;
       const rows = await db
         .select()
         .from(allowedEmails)
