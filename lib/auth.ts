@@ -29,6 +29,7 @@ if (process.env.ALLOW_DEV_EMAILS === "true") {
 export const authOptions: NextAuthOptions = {
   providers,
   secret: process.env.NEXTAUTH_SECRET,
+  // @ts-expect-error trustHost exists at runtime, types may be incomplete
   trustHost: true,
   pages: {
     signIn: "/login",
