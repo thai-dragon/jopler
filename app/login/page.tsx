@@ -1,11 +1,13 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 
 function LoginContent() {
   const params = useSearchParams();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const error = params.get("error");
   const [mounted, setMounted] = useState(false);
   const [devLoginAvailable, setDevLoginAvailable] = useState(false);
@@ -16,6 +18,11 @@ function LoginContent() {
       .then((d) => setDevLoginAvailable(d.allowDevEmails === true))
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      router.replace("/");
+    }
+  }, [status, session, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950" suppressHydrationWarning>

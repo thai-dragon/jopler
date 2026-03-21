@@ -31,25 +31,6 @@ export const authOptions: NextAuthOptions = {
   providers,
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV !== "production",
-  useSecureCookies: true,
-  cookies: {
-    sessionToken: {
-      name: "next-auth.session-token",
-      options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: true },
-    },
-    callbackUrl: {
-      name: "next-auth.callback-url",
-      options: { sameSite: "lax" as const, path: "/", secure: true },
-    },
-    csrfToken: {
-      name: "next-auth.csrf-token",
-      options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: true },
-    },
-    state: {
-      name: "next-auth.state",
-      options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: true, maxAge: 900 },
-    },
-  },
   pages: {
     signIn: "/login",
     error: "/login",
