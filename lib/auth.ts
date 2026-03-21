@@ -29,6 +29,7 @@ if (process.env.ALLOW_DEV_EMAILS === "true") {
 export const authOptions: NextAuthOptions = {
   providers,
   secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",
