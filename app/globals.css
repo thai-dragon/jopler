@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes skeleton-shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.skeleton {
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+body {
+  background: #0a0a0f;
+  color: #e4e4e7;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+a { color: #60a5fa; }
+a:hover { text-decoration: underline; }

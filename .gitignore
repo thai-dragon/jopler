@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+build/
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Testing
+playwright-report/
+test-results/
+.blob-storage/
+
+# Misc
+*.log
+.DS_Store
