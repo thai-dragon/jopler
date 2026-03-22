@@ -25,15 +25,15 @@ function parseJson<T>(s: string | null | undefined): T | null {
 
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(score * 10, 100);
-  const color =
-    score >= 8 ? "bg-green-500" :
-    score >= 5 ? "bg-blue-500" :
-    score >= 3 ? "bg-yellow-500" :
-    "bg-gray-600";
+  const fillColor =
+    score >= 8 ? "#1f2937" :
+    score >= 5 ? "#4b5563" :
+    score >= 3 ? "#6b7280" :
+    "#9ca3af";
   return (
     <div className="flex items-center gap-2">
-      <div className="w-24 h-2 bg-gray-800 rounded overflow-hidden">
-        <div className={`h-full ${color} rounded`} style={{ width: `${pct}%` }} />
+      <div className="w-24 h-2 bg-gray-100 rounded overflow-hidden">
+        <div className="h-full rounded transition-[width]" style={{ width: `${pct}%`, backgroundColor: fillColor }} />
       </div>
       <span className="text-xs text-gray-400 w-8">{score.toFixed(1)}</span>
     </div>
@@ -166,7 +166,7 @@ export default function SummaryPage() {
                 </div>
                 <div className="text-right">
                   {s.avgSalaryMin != null && (
-                    <div className="text-green-400 font-medium">
+                    <div className="font-semibold" style={{ color: "var(--color-text)" }}>
                       ${s.avgSalaryMin?.toFixed(0)} — ${s.avgSalaryMax?.toFixed(0)} {s.salaryCurrency}
                     </div>
                   )}

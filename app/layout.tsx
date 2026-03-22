@@ -7,11 +7,17 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Jopler",
   description: "Job parser, market analysis & interview training",
+  icons: { icon: "/favicon.ico" },
 };
+
+const themeScript = `(function(){var t=localStorage.getItem("theme");document.documentElement.classList.add(t==="dark"?"dark":"light")})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
           <AuthSessionProvider>

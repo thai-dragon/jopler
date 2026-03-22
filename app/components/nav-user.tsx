@@ -17,8 +17,8 @@ export default function NavUser() {
           referrerPolicy="no-referrer"
         />
       ) : (
-        <div className="w-6 h-6 rounded-full bg-amber-600 flex items-center justify-center text-[10px] font-bold text-white">
-          {session.user.name?.charAt(0) || "?"}
+        <div className="w-6 h-6 rounded-full bg-amber-600 flex items-center justify-center text-[10px] font-bold" style={{ color: "#fff" }}>
+          {session.user.name?.charAt(0)?.toUpperCase() || session.user.email?.charAt(0)?.toUpperCase() || "?"}
         </div>
       )}
       <span className="text-xs text-gray-400 hidden sm:inline">{session.user.email}</span>

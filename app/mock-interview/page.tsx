@@ -404,9 +404,9 @@ export default function MockInterviewPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>Mock Interview</h1>
-      <p className="text-gray-400 text-sm mb-6">
+    <div className={`p-6 max-w-4xl mx-auto ${interviewStarted ? "min-h-[calc(100vh-5rem)] flex flex-col" : ""}`}>
+      <h1 className="text-2xl font-bold mb-2 shrink-0" style={{ color: "var(--color-text)" }}>Mock Interview</h1>
+      <p className="text-gray-400 text-sm mb-6 shrink-0">
         Practice with AI-evaluated answers. Select topics and start the interview.
       </p>
 
@@ -462,8 +462,8 @@ export default function MockInterviewPage() {
           )}
         </>
       ) : (
-        <>
-          <div className="mb-4 flex items-center justify-between">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="mb-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-400">
                 Question {currentIndex + 1} of {questions.length}
@@ -502,8 +502,9 @@ export default function MockInterviewPage() {
             )}
           </div>
 
-          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4 mb-4 min-h-[200px]">
-            <div className="space-y-3 overflow-y-auto max-h-[400px] scroll-smooth">
+          <div className="flex-1 min-h-0 flex flex-col bg-gray-800/60 border border-gray-700 rounded-xl overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 scroll-smooth">
+              <div className="space-y-3">
               {messages.map((m, i) => (
                 <div
                   key={i}
@@ -553,11 +554,11 @@ export default function MockInterviewPage() {
                 </div>
               ))}
               <div ref={chatEndRef} />
+              </div>
             </div>
-          </div>
 
-          {!sessionComplete && (
-            <div className="flex flex-col gap-3">
+            {!sessionComplete && (
+            <div className="flex flex-col gap-3 p-4 pt-0 shrink-0 border-t border-gray-700/50">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -607,10 +608,11 @@ export default function MockInterviewPage() {
                 </button>
               </div>
             </div>
-          )}
+            )}
 
-          {sessionComplete && (
-            <div className="bg-amber-900/30 border border-amber-600 rounded-lg p-4 text-center">
+            {sessionComplete && (
+            <div className="shrink-0 p-4 pt-0 border-t border-gray-700/50">
+              <div className="bg-amber-900/30 border border-amber-600 rounded-lg p-4 text-center">
               <div className="text-lg font-semibold text-amber-400">
                 Session complete · Average score: {avgScore}/10
               </div>
@@ -620,9 +622,11 @@ export default function MockInterviewPage() {
               >
                 Start new interview
               </button>
+              </div>
             </div>
-          )}
-        </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
