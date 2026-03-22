@@ -472,37 +472,39 @@ function UnitPageContent() {
               })}
             </div>
           ) : (
-            <div className="mb-4">
+            <div className="mb-4 flex gap-2 items-stretch">
               <textarea
                 value={userAnswer}
                 onChange={(e) => setUserAnswer(e.target.value)}
                 disabled={!!feedback}
                 placeholder="Type your answer here..."
                 rows={3}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-amber-500 focus:outline-none resize-y mb-2"
+                className="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-amber-500 focus:outline-none resize-y"
               />
               {isTheoreticalQuestion && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={toggleRecord}
-                    disabled={!!feedback || transcribing}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                      isRecording
-                        ? "bg-red-600 hover:bg-red-500 text-white"
-                        : "bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-50"
+                <button
+                  type="button"
+                  onClick={toggleRecord}
+                  disabled={!!feedback || transcribing}
+                  title={transcribing ? "Transcribing..." : isRecording ? "Stop recording" : "Record voice"}
+                  className={`w-11 h-11 shrink-0 self-end rounded-xl flex items-center justify-center transition border disabled:opacity-70 active:scale-95
+                    ${isRecording ? "bg-red-600/90 hover:bg-red-600 text-white border-red-500/50 border" :
+                    transcribing ? "bg-gray-700 text-amber-400 border-amber-600/30 border" :
+                    "bg-gray-700/80 hover:bg-gray-600 text-gray-300 hover:text-white border-gray-600 border disabled:opacity-50"
                     }`}
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full ${isRecording ? "bg-current animate-pulse" : "bg-current"}`}
-                    />
-                    {transcribing
-                      ? "Transcribing..."
-                      : isRecording
-                        ? "Stop Recording"
-                        : "Record Voice"}
-                  </button>
-                </div>
+                >
+                  {transcribing ? (
+                    <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" x2="12" y1="19" y2="22" />
+                    </svg>
+                  )}
+                </button>
               )}
             </div>
           )}
