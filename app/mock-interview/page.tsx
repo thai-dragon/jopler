@@ -404,7 +404,7 @@ export default function MockInterviewPage() {
   }
 
   return (
-    <div className={`p-6 max-w-4xl mx-auto ${interviewStarted ? "min-h-[calc(100vh-5rem)] flex flex-col" : ""}`}>
+    <div className={`p-6 max-w-4xl mx-auto ${interviewStarted ? "h-[calc(100vh-5rem)] flex flex-col overflow-hidden" : ""}`}>
       <h1 className="text-2xl font-bold mb-2 shrink-0" style={{ color: "var(--color-text)" }}>Mock Interview</h1>
       <p className="text-gray-400 text-sm mb-6 shrink-0">
         Practice with AI-evaluated answers. Select topics and start the interview.
@@ -532,7 +532,7 @@ export default function MockInterviewPage() {
                     </div>
                   ) : (
                     <div>
-                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      <div className="whitespace-pre-wrap">{m.role === "assistant" ? "Q. " : m.role === "user" ? "A. " : ""}{m.content}</div>
                       {m.options && m.options.length > 0 && (
                         <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
                           <p className="text-amber-400/90 text-xs font-medium mb-2">Consider these statements. Which is correct? Explain your reasoning:</p>
@@ -558,7 +558,7 @@ export default function MockInterviewPage() {
             </div>
 
             {!sessionComplete && (
-            <div className="flex flex-col gap-3 p-4 pt-0 shrink-0 border-t border-gray-700/50">
+            <div className="flex flex-col gap-3 p-4 pt-2 shrink-0">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

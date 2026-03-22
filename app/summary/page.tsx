@@ -23,16 +23,15 @@ function parseJson<T>(s: string | null | undefined): T | null {
   try { return JSON.parse(s); } catch { return null; }
 }
 
-function ScoreBar({ score }: { score: number }) {
+function ScoreBar({ score, dark }: { score: number; dark?: boolean }) {
   const pct = Math.min(score * 10, 100);
-  const fillColor =
-    score >= 8 ? "#1f2937" :
-    score >= 5 ? "#4b5563" :
-    score >= 3 ? "#6b7280" :
-    "#9ca3af";
+  const fillColor = dark
+    ? (score >= 8 ? "#d1d5db" : score >= 5 ? "#9ca3af" : score >= 3 ? "#6b7280" : "#4b5563")
+    : (score >= 8 ? "#1f2937" : score >= 5 ? "#4b5563" : score >= 3 ? "#6b7280" : "#9ca3af");
+  const trackClass = dark ? "bg-gray-700" : "bg-gray-100";
   return (
     <div className="flex items-center gap-2">
-      <div className="w-24 h-2 bg-gray-100 rounded overflow-hidden">
+      <div className={`w-24 h-2 ${trackClass} rounded overflow-hidden`}>
         <div className="h-full rounded transition-[width]" style={{ width: `${pct}%`, backgroundColor: fillColor }} />
       </div>
       <span className="text-xs text-gray-400 w-8">{score.toFixed(1)}</span>
@@ -183,7 +182,7 @@ export default function SummaryPage() {
                     {sortedTech.map(([tech, score]) => (
                       <div key={tech} className="flex items-center justify-between gap-3 text-sm min-w-0">
                         <span className="text-gray-300 shrink-0">{tech}</span>
-                        <ScoreBar score={score} />
+                        <ScoreBar score={score} dark={theme === "dark"} />
                       </div>
                     ))}
                   </div>

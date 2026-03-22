@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { allowedEmails } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
-import { getPrimaryAdminEmail } from "@/lib/config";
+import { getPrimaryAdminEmail, isSuperadmin } from "@/lib/config";
 
 export async function GET() {
   try {
@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!isSuperadmin(session.user.email)) {
+      return NextResponse.json({ error: "Superadmin only" }, { status: 403 });
     }
     const { email } = await req.json();
     if (!email || !email.includes("@")) {
@@ -48,6 +51,9 @@ export async function DELETE(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!isSuperadmin(session.user.email)) {
+      return NextResponse.json({ error: "Superadmin only" }, { status: 403 });
     }
     const { email } = await req.json();
     if (email === getPrimaryAdminEmail()) {

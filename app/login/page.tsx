@@ -32,7 +32,7 @@ function LoginContent() {
       <>
       <div className="w-full max-w-sm" suppressHydrationWarning>
         <div className="text-center mb-8" suppressHydrationWarning>
-          <h1 className="text-4xl font-bold text-white tracking-tight" suppressHydrationWarning>Jopler</h1>
+          <h1 className="text-4xl font-bold tracking-tight" style={{ color: "var(--color-text)" }} suppressHydrationWarning>Jopler</h1>
           <p className="text-gray-500 mt-2 text-sm" suppressHydrationWarning>Job parser, market analysis & interview training</p>
         </div>
 

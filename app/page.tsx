@@ -69,14 +69,14 @@ export default function HomePage() {
         <button
           onClick={() => streamSSE("/api/parse", setParsing)}
           disabled={parsing || summarizing}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded font-medium transition text-white"
+          className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
         >
           {parsing ? "Parsing..." : "Parse Jobs"}
         </button>
         <button
           onClick={() => streamSSE("/api/summary", setSummarizing)}
           disabled={parsing || summarizing}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded font-medium transition text-white"
+          className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
         >
           {summarizing ? "Generating..." : "Generate AI Summary"}
         </button>
