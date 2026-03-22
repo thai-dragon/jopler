@@ -87,7 +87,7 @@ export default function JobsPage() {
               return (
                 <tr key={j.id} className="border-b border-gray-800/50 hover:bg-gray-900/50">
                   <td className="py-2 px-3">
-                    <span className={j.source === "djinni" ? "text-blue-400" : "text-green-400"}>
+                    <span className="font-semibold">
                       {j.source}
                     </span>
                   </td>
@@ -128,19 +128,14 @@ export default function JobsPage() {
                     </span>
                   </td>
                   <td className="py-2 px-3">
-                    <span className={
-                      j.level === "Senior" ? "text-amber-400" :
-                      j.level === "Middle" ? "text-sky-400" :
-                      j.level === "Lead" ? "text-purple-400" :
-                      "text-gray-400"
-                    }>
+                    <span className="font-semibold">
                       {j.level || "—"}
                     </span>
                   </td>
                   <td className="py-2 px-3 text-gray-300">{j.type || "—"}</td>
                   <td className="py-2 px-3">
                     {j.salaryMin ? (
-                      <span className="text-green-400">
+                      <span className="font-semibold">
                         ${j.salaryMin}{j.salaryMax && j.salaryMax !== j.salaryMin ? `-$${j.salaryMax}` : ""}
                       </span>
                     ) : "—"}

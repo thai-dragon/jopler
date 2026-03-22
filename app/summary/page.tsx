@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTheme } from "../components/theme-provider";
 
 type Summary = {
   id: string;
@@ -40,6 +41,7 @@ function ScoreBar({ score }: { score: number }) {
 }
 
 export default function SummaryPage() {
+  const { theme } = useTheme();
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [metaSummary, setMetaSummary] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -56,11 +58,16 @@ export default function SummaryPage() {
       const pdf = new jspdfMod.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const bgColor = "#111827";
+      const isLight = theme === "light";
+      const bgColor = isLight ? "#ffffff" : "#111827";
       const opts = { scale: 2, useCORS: true, logging: false, backgroundColor: bgColor, scrollX: 0, scrollY: 0 };
 
       const fillPage = () => {
-        pdf.setFillColor(17, 24, 39);
+        if (isLight) {
+          pdf.setFillColor(255, 255, 255);
+        } else {
+          pdf.setFillColor(17, 24, 39);
+        }
         pdf.rect(0, 0, pageW, pageH, "F");
       };
 
@@ -126,7 +133,7 @@ export default function SummaryPage() {
         <button
           onClick={downloadPDF}
           disabled={downloading}
-          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded font-medium text-sm transition"
+          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded font-medium text-sm transition text-white"
         >
           {downloading ? "Generating..." : "Download PDF"}
         </button>

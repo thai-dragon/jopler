@@ -14,8 +14,8 @@ test.describe("Loading skeletons vs content layout", () => {
     test(`${name}: page loads and has similar layout to skeleton`, async ({ page }) => {
       await page.goto(path, { waitUntil: "networkidle", timeout: 15000 });
 
-      // After load: main content area visible (skeleton and content use same structure)
-      const main = page.locator("main, div.p-6").first();
+      // After load: main content area visible (main pages have <main>, login has div.min-h-screen)
+      const main = page.locator("main, div.min-h-screen, div.p-6").first();
       await expect(main).toBeVisible({ timeout: 5000 });
 
       // Layout check: content has reasonable dimensions (skeleton matches)

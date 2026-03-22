@@ -81,7 +81,7 @@ export default function TrainingPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white">Interview Training</h1>
+          <h1 className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>Interview Training</h1>
           <p className="text-gray-400 mt-1">Practice questions based on real job market requirements</p>
         </div>
         <button
@@ -96,11 +96,11 @@ export default function TrainingPage() {
       {units.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-gray-800/60 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-white">{units.length}</div>
+            <div className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>{units.length}</div>
             <div className="text-xs text-gray-400 uppercase tracking-wide mt-1">Topics</div>
           </div>
           <div className="bg-gray-800/60 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-white">{totalQuestions}</div>
+            <div className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>{totalQuestions}</div>
             <div className="text-xs text-gray-400 uppercase tracking-wide mt-1">Questions</div>
           </div>
           <div className="bg-gray-800/60 rounded-lg p-4 text-center">
@@ -132,7 +132,7 @@ export default function TrainingPage() {
       ) : units.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">🎯</div>
-          <h2 className="text-xl font-semibold text-white mb-2">No training units yet</h2>
+          <h2 className="text-xl font-semibold mb-2" style={{ color: "var(--color-text)" }}>No training units yet</h2>
           <p className="text-gray-400 mb-6">
             Generate training from your parsed job data.<br />
             Make sure you&apos;ve parsed jobs and created summaries first.
@@ -150,7 +150,7 @@ export default function TrainingPage() {
                 className={`block rounded-xl border-2 ${m.border} ${m.bg} p-5 hover:scale-[1.02] transition-transform no-underline`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-bold text-white">{unit.title}</h3>
+                  <h3 className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{unit.title}</h3>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.text} bg-black/30`}>
                     {m.label}
                   </span>

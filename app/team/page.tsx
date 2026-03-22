@@ -57,7 +57,7 @@ export default function TeamPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Team Progress</h1>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Team Progress</h1>
         <p className="text-gray-500 text-sm mt-1">Training progress across all team members</p>
       </div>
 
@@ -74,7 +74,7 @@ export default function TeamPage() {
                 <div className="relative">
                   <ProgressRing pct={m.pct} color={COLORS[i % COLORS.length]} id={`team-${i}`} />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-lg font-bold text-white">{m.pct}%</span>
+                    <span className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{m.pct}%</span>
                   </div>
                 </div>
 
@@ -83,17 +83,17 @@ export default function TeamPage() {
                     <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${m.color} flex items-center justify-center text-xs font-bold text-white`}>
                       {m.avatar}
                     </div>
-                    <h3 className="font-semibold text-white truncate">{m.name}</h3>
+                    <h3 className="font-semibold truncate" style={{ color: "var(--color-text)" }}>{m.name}</h3>
                   </div>
 
                   <div className="space-y-1.5 mt-3">
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">Last topic</span>
-                      <span className="text-gray-300">{m.lastTopic}</span>
+                      <span style={{ color: "var(--color-text-secondary)" }}>{m.lastTopic}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-500">Questions answered</span>
-                      <span className="text-gray-300">{m.questionsAnswered}</span>
+                      <span style={{ color: "var(--color-text-secondary)" }}>{m.questionsAnswered}</span>
                     </div>
                   </div>
 

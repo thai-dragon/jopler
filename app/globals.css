@@ -2,6 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark theme = original, unchanged */
+:root,
+.dark {
+  --color-bg: #0a0a0f;
+  --color-text: #e4e4e7;
+  --color-border: #1f2937;
+  --color-text-secondary: #d1d5db;
+  --color-muted: #9ca3af;
+  --color-accent: #f59e0b;
+}
+
+.light {
+  --color-bg: #FFFFFF;
+  --color-surface: #F0F0F0;
+  --color-border: #B3B3B3;
+  --color-text: #2B2B2B;
+  --color-text-secondary: #525252;
+  --color-muted: #737373;
+  --color-accent: #2B2B2B;
+}
+
+/* Light theme: override Tailwind grays → white/light */
+.light .bg-gray-950,
+.light .bg-gray-900 { background-color: #FFFFFF !important; }
+.light .bg-gray-800,
+.light .bg-gray-800\/60,
+.light .bg-gray-800\/40,
+.light .bg-gray-800\/50 { background-color: #F5F5F5 !important; }
+.light .bg-gray-700,
+.light .bg-gray-700\/80,
+.light .bg-gray-700\/50 { background-color: #E8E8E8 !important; }
+.light .bg-gray-600 { background-color: #D4D4D4 !important; }
+.light .bg-gray-900\/50 { background-color: #FAFAFA !important; }
+
+.light .text-gray-200,
+.light .text-gray-300 { color: #2B2B2B !important; }
+.light .text-gray-400,
+.light .text-gray-500 { color: #525252 !important; }
+.light .text-gray-600 { color: #737373 !important; }
+
+.light .border-gray-700,
+.light .border-gray-800 { border-color: #D4D4D4 !important; }
+.light .border-gray-600 { border-color: #B3B3B3 !important; }
+
+.light .placeholder-gray-600::placeholder { color: #737373 !important; }
+
+.light .hover\:bg-gray-700:hover,
+.light .hover\:bg-gray-600:hover,
+.light .hover\:bg-gray-900\/50:hover { background-color: #E8E8E8 !important; }
+.light .hover\:text-gray-200:hover,
+.light .hover\:text-gray-300:hover,
+.light .hover\:text-gray-400:hover { color: #2B2B2B !important; }
+.light .hover\:border-gray-500:hover,
+.light .hover\:border-gray-600:hover { border-color: #B3B3B3 !important; }
+
+.light .disabled\:bg-gray-700:disabled,
+.light .disabled\:bg-gray-800:disabled { background-color: #E8E8E8 !important; }
+.light .disabled\:text-gray-500:disabled,
+.light .disabled\:text-gray-600:disabled { color: #737373 !important; }
+
+.light nav { background: #FFFFFF; }
+.light nav .text-white { color: #2B2B2B !important; }
+
+/* Light theme: amber/orange → darkest theme color (#2B2B2B) */
+.light .text-amber-300,
+.light .text-amber-300\/90,
+.light .text-amber-400,
+.light .text-amber-400\/90,
+.light .text-amber-500 { color: #2B2B2B !important; }
+.light nav .text-amber-400,
+.light .hover\:text-amber-300:hover,
+.light .hover\:text-amber-400:hover { color: #2B2B2B !important; }
+.light .bg-amber-500,
+.light .bg-amber-600,
+.light .bg-amber-700,
+.light .bg-amber-900\/30,
+.light .bg-amber-900\/40,
+.light .bg-amber-900\/50 { background-color: #2B2B2B !important; }
+.light .hover\:bg-amber-500:hover,
+.light .hover\:bg-amber-600:hover,
+.light .hover\:bg-amber-700:hover { background-color: #1a1a1a !important; }
+.light .border-amber-500,
+.light .border-amber-600,
+.light .border-amber-800,
+.light .border-amber-500\/50,
+.light .border-amber-600\/30,
+.light .border-amber-600\/50,
+.light .border-amber-800\/40,
+.light .border-amber-800\/50 { border-color: #2B2B2B !important; }
+/* Progress dot active ring: gray in light theme (was dark) */
+.light .ring-amber-400 { --tw-ring-color: #737373 !important; }
+.light .focus\:border-amber-500:focus { border-color: #2B2B2B !important; }
+/* Orange (attempted mastery, etc.) */
+.light .text-orange-400 { color: #2B2B2B !important; }
+.light .bg-orange-900\/40 { background-color: #2B2B2B !important; }
+.light .border-orange-500 { border-color: #2B2B2B !important; }
+/* Dark bg (amber-900/30) needs light text for contrast */
+.light .bg-amber-900\/30,
+.light .bg-amber-900\/40 { color: #e4e4e7 !important; }
+
+/* Light theme: emerald (Correct answer, success feedback) – dark text on light bg */
+.light .bg-emerald-900\/30,
+.light .bg-emerald-900\/40 { background-color: #d1fae5 !important; }
+.light .text-emerald-200,
+.light .text-emerald-400 { color: #065f46 !important; }
+.light .border-emerald-500,
+.light .border-emerald-600 { border-color: #059669 !important; }
+
+/* Light theme: red (incorrect feedback) – dark text on light bg */
+.light .bg-red-900\/30 { background-color: #fee2e2 !important; }
+.light .text-red-400 { color: #b91c1c !important; }
+.light .border-red-600 { border-color: #dc2626 !important; }
+
+/* Light theme: progress dot active ring offset */
+.light .ring-offset-gray-900 { --tw-ring-offset-color: var(--color-bg) !important; }
+
 @keyframes skeleton-shimmer {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
@@ -12,10 +128,13 @@
 }
 
 body {
-  background: #0a0a0f;
-  color: #e4e4e7;
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
 a { color: #60a5fa; }
 a:hover { text-decoration: underline; }
+.light a { color: var(--color-muted); }
+.light a:hover { color: var(--color-text); }

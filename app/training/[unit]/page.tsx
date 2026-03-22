@@ -294,39 +294,41 @@ function UnitPageContent() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {/* Page-level actions: apply to unit */}
+      <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-700">
+        {isSuperadmin && (
+          <>
+            <button
+              onClick={regenerate}
+              className="px-3 py-2 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition"
+            >
+              Regenerate
+            </button>
+            <button
+              onClick={regenerateCorrectAnswers}
+              disabled={generatingIdeals}
+              className="px-3 py-2 text-sm bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg transition"
+            >
+              {generatingIdeals ? "Generating..." : "Regenerate correct answers"}
+            </button>
+          </>
+        )}
+        <button
+          onClick={clearResults}
+          className="px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
+        >
+          Clear results
+        </button>
+        <button
+          onClick={() => setShowHistory(true)}
+          className="px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
+        >
+          History
+        </button>
+      </div>
+
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Link href="/training" className="text-gray-400 hover:text-white text-sm">&larr; Back to Training</Link>
-          {isSuperadmin && (
-            <>
-              <button
-                onClick={regenerate}
-                className="px-2.5 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition"
-              >
-                Regenerate
-              </button>
-              <button
-                onClick={regenerateCorrectAnswers}
-                disabled={generatingIdeals}
-                className="px-2.5 py-1 text-xs bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white rounded-lg transition"
-              >
-                {generatingIdeals ? "Generating..." : "Regenerate correct answers"}
-              </button>
-            </>
-          )}
-          <button
-            onClick={clearResults}
-            className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
-          >
-            Clear results
-          </button>
-          <button
-            onClick={() => setShowHistory(true)}
-            className="px-2.5 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition"
-          >
-            History
-          </button>
-        </div>
+        <Link href="/training" className="text-gray-400 hover:text-white text-sm">&larr; Back to Training</Link>
         <div className="text-sm text-gray-400">
           {correct}/{questions.length} correct &middot; {answered} attempted
         </div>
@@ -410,7 +412,7 @@ function UnitPageContent() {
           </div>
 
           {/* Question */}
-          <h2 className="text-lg font-semibold text-white mb-4 leading-relaxed">{q.question}</h2>
+          <h2 className="text-lg font-semibold mb-4 leading-relaxed" style={{ color: "var(--color-text)" }}>{q.question}</h2>
 
           {/* Code snippet (read-only display for code_output and non-code types) */}
           {q.codeSnippet && !CODE_TYPES.has(q.type) && (
@@ -514,7 +516,7 @@ function UnitPageContent() {
             <button
               onClick={submitAnswer}
               disabled={checking || !userAnswer.trim()}
-              className="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 text-white rounded-lg font-medium transition text-sm"
+              className="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 text-white disabled:text-gray-600 rounded-lg font-medium transition text-sm"
             >
               {checking ? "Checking..." : "Submit Answer"}
             </button>

@@ -405,7 +405,7 @@ export default function MockInterviewPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-2">Mock Interview</h1>
+      <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>Mock Interview</h1>
       <p className="text-gray-400 text-sm mb-6">
         Practice with AI-evaluated answers. Select topics and start the interview.
       </p>
@@ -509,11 +509,12 @@ export default function MockInterviewPage() {
                   key={i}
                   className={
                     m.role === "assistant"
-                      ? "text-white"
+                      ? ""
                       : m.role === "user"
                         ? "text-gray-300 ml-4"
                         : "text-amber-300/90 text-sm border-l-2 border-amber-500/50 pl-3"
                   }
+                  style={m.role === "assistant" ? { color: "var(--color-text)" } : undefined}
                 >
                   {m.role === "evaluation" ? (
                     <div>
