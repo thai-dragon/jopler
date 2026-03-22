@@ -62,7 +62,7 @@ export default function LiveLogs() {
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-950 border-t border-gray-800 shadow-2xl">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-900 transition"
+        className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-inset transition"
       >
         <div className="flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${statusColor}`} />
