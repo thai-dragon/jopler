@@ -9,10 +9,11 @@ export async function POST(req: NextRequest) {
     }
 
     const wav = await generateTTSBuffer(text);
-    return new NextResponse(wav, {
+    const body = new Uint8Array(wav);
+    return new NextResponse(body, {
       headers: {
         "Content-Type": "audio/wav",
-        "Content-Length": String(wav.length),
+        "Content-Length": String(body.length),
       },
     });
   } catch (err: unknown) {

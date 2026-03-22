@@ -546,7 +546,7 @@ function UnitPageContent() {
                 </div>
               )}
 
-              {(feedback || q.progress) && !showAnswer && (
+              {(feedback || q.progress) && !showAnswer && !(feedback?.isCorrect ?? q.progress?.isCorrect) && (
                 <button
                   onClick={handleShowAnswer}
                   className="text-xs text-amber-400 hover:text-amber-300"
