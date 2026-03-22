@@ -42,10 +42,21 @@ export const trainingQuestions = sqliteTable("training_questions", {
   codeSnippet: text("code_snippet"),
   options: text("options"),
   correctAnswer: text("correct_answer").notNull(),
+  idealAnswer: text("ideal_answer"),
   testCases: text("test_cases"),
   starterCode: text("starter_code"),
   explanation: text("explanation"),
+  audioPath: text("audio_path"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
+export const trainingSessions = sqliteTable("training_sessions", {
+  id: text("id").primaryKey(),
+  unitId: text("unit_id").notNull(),
+  userEmail: text("user_email").notNull(),
+  correctCount: integer("correct_count").default(0),
+  totalCount: integer("total_count").default(0),
+  closedAt: text("closed_at").notNull(),
 });
 
 export const trainingProgress = sqliteTable("training_progress", {

@@ -101,3 +101,15 @@ if (seedEmail) {
 
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN test_cases TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN starter_code TEXT"); } catch {}
+try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN ideal_answer TEXT"); } catch {}
+try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN audio_path TEXT"); } catch {}
+try {
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS training_sessions (
+    id TEXT PRIMARY KEY,
+    unit_id TEXT NOT NULL,
+    user_email TEXT NOT NULL,
+    correct_count INTEGER DEFAULT 0,
+    total_count INTEGER DEFAULT 0,
+    closed_at TEXT NOT NULL
+  )`);
+} catch {}

@@ -1,7 +1,11 @@
 import { v4 as uuid } from "uuid";
+import fs from "fs";
+import path from "path";
 import { db } from "./db";
 import { trainingUnits, trainingQuestions, trainingProgress } from "./schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { generateIdealAnswer } from "./gemini-ideal";
+import { generateTTSBuffer } from "./tts";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const GENERATE_MODEL = "gpt-5.4";
@@ -70,78 +74,54 @@ export const THEMATIC_UNITS = [
   },
 ];
 
-const GENERATE_PROMPT = `You are a SENIOR tech interviewer at a top product company. You interview candidates for Senior Frontend / Senior Fullstack (Node.js) positions.
+const THEORETICAL_PROMPT = `You are a SENIOR tech interviewer at a top product company. You interview candidates for Senior Frontend / Senior Fullstack (Node.js) positions.
 
-Generate exactly {COUNT} interview questions for the topic: "{TOPIC}".
+Generate exactly 11 THEORETICAL interview questions for the topic: "{TOPIC}".
 
-These must be REAL questions that are actually asked in interviews — not textbook fluff. Think of what a tech lead would ask to separate a mid from a senior.
+Types to use (mix these): concept, best_practice, code_output, system_design.
+NO multiple_choice (real interviews ask open-ended questions, not A/B/C/D).
+NO code_write or fix_bug — those are for a separate batch.
 
-Examples of the style and depth expected:
-
-For React/TS:
-- "What architecture did you use? Did you ever initiate or approve an architecture decision, and why?" (expect FSD, modular, reasoning)
-- "If a parent has two states and passes one unchanged prop to a child, will the child re-render? Under what conditions?"
-- "Explain useRef — when would you use it over useState?"
-- "What is unknown type and when would you use it over any?"
-- "What does ?? do differently from ||?"
-
-For CSS:
-- "List all position values and explain when you'd use each"
-- "What is box-sizing and how does border-box change layout?"
-- "What is critical CSS and why does it matter for performance?"
-
-For JavaScript:
-- "Explain event loop: what's the output of console.log('1'); Promise.resolve().then(()=>console.log('2')); setTimeout(()=>console.log('3'),0);"
-- "How do you deep-copy an object? What breaks with JSON.parse(JSON.stringify())?"
-- "What happens if setTimeout callback contains a heavy function — when does it actually run?"
-- "What is a pure function and why does it matter?"
-
-For general:
-- "What happens when a user enters a URL and presses Enter?" (DNS → TCP → HTTPS → HTML → parse → render)
-- "What is reflow vs repaint?"
-- "Merge two arrays by id with O(n) complexity"
-- "What is a type guard? How does 'is' keyword work?"
-- "interface vs type — when to use which?"
-
-Question types to mix:
-- code_output: "What will this code output?" (include realistic code snippet with tricky but fair edge cases)
-- fix_bug: "Find and fix the bug" (subtle production bugs, not syntax errors — provide the buggy code in codeSnippet, user edits it in a code editor)
-- code_write: "Implement this function/feature" (user writes code from scratch or from a starter in a code editor — provide testCases for automated verification)
-- concept: "Explain X" or "What is the difference between X and Y" (deep understanding, not Wikipedia)
-- best_practice: "Which approach is better and why?" (architectural decisions, patterns)
-- multiple_choice: A/B/C/D with plausible wrong answers
-
-IMPORTANT: At least 3-4 questions out of {COUNT} MUST be code_write type. These are coding challenges where the user writes real code.
+Examples:
+- concept: "Explain useRef — when would you use it over useState?"
+- best_practice: "Which approach is better and why?" (architectural decisions)
+- code_output: "What will this code output?" (include code snippet, user reads and answers)
+- system_design: "How would you design X?"
 
 Return a JSON array. Each item:
 {
-  "type": "code_output" | "fix_bug" | "code_write" | "concept" | "best_practice" | "multiple_choice",
+  "type": "code_output" | "concept" | "best_practice" | "system_design",
   "difficulty": "easy" | "medium" | "hard",
   "question": "The question text",
-  "codeSnippet": "code block if needed (use \\n for newlines)" or null,
-  "starterCode": "starter template for code_write (e.g. function signature)" or null,
-  "testCases": "[{\"input\":\"args\",\"expected\":\"result\",\"description\":\"test name\"}]" or null,
-  "options": ["A) ...", "B) ...", "C) ...", "D) ..."] or null,
-  "correctAnswer": "The correct answer / reference implementation with brief reasoning",
-  "explanation": "Detailed explanation: why this is correct, common mistakes, what senior devs should know. 2-4 sentences."
+  "codeSnippet": "code block if needed (for code_output)" or null,
+  "options": null,
+  "correctAnswer": "The correct answer with brief reasoning",
+  "explanation": "2-4 sentences."
 }
 
-For code_write questions:
-- starterCode: provide a function signature or minimal template (e.g. "function debounce(fn, delay) {\\n  // your code here\\n}")
-- testCases: JSON array of test cases. Each: { "input": "debounce(() => 1, 100)", "expected": "function", "description": "returns a function" }. Keep test inputs as strings that can be eval'd. 3-5 test cases per question.
-- correctAnswer: a working reference implementation
+RULES: 11 questions total. All theoretical. Difficulty: 20% easy, 50% medium, 30% hard. All in English.
+Return ONLY valid JSON array. No markdown, no code fences.`;
 
-For fix_bug questions:
-- codeSnippet: the buggy code (user will edit it directly in a code editor)
+const CODING_PROMPT = `You are a SENIOR tech interviewer at a top product company.
 
-RULES:
-- Questions MUST feel like a real interview, not a quiz app
-- Answers should demonstrate SENIOR-level understanding
-- Code snippets: realistic, production-like, not fizzbuzz
-- Difficulty: 20% easy, 50% medium, 30% hard
-- All in English
-- {COUNT} questions total
+Generate exactly 4 CODING interview questions for the topic: "{TOPIC}".
 
+Types: code_write (implement from scratch) or fix_bug (find and fix the bug).
+Mix: e.g. 2-3 code_write, 1-2 fix_bug.
+
+Return a JSON array. Each item:
+{
+  "type": "code_write" | "fix_bug",
+  "difficulty": "easy" | "medium" | "hard",
+  "question": "The task description",
+  "codeSnippet": "code for fix_bug (buggy code) or null for code_write",
+  "starterCode": "function signature for code_write" or null,
+  "testCases": "[{\"input\":\"...\",\"expected\":\"...\",\"description\":\"...\"}]",
+  "correctAnswer": "Working reference implementation",
+  "explanation": "2-4 sentences."
+}
+
+For code_write: provide starterCode and testCases. For fix_bug: provide buggy code in codeSnippet.
 Return ONLY valid JSON array. No markdown, no code fences.`;
 
 const CHECK_PROMPT = `You are grading a developer interview answer. Your feedback must be CLEAR, PRACTICAL, and ACTIONABLE.
@@ -247,21 +227,28 @@ export async function generateAllTraining(onProgress?: (msg: string) => void): P
   const units = await db.select().from(trainingUnits).orderBy(trainingUnits.sortOrder);
   let totalQ = 0;
 
+  const audioDir = path.join(process.cwd(), "public", "audio");
+  if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+
   for (let i = 0; i < units.length; i++) {
     const unit = units[i];
     const thematic = THEMATIC_UNITS[i];
-    const count = 15;
 
-    log(`[Training] Generating ${count} questions for "${unit.title}" using ${GENERATE_MODEL}...`);
-
-    const prompt = GENERATE_PROMPT
-      .replace(/{COUNT}/g, String(count))
-      .replace(/{TOPIC}/g, thematic.topic);
+    log(`[Training] Generating 11 theoretical + 4 coding for "${unit.title}"...`);
 
     try {
-      const raw = await callOpenAI(GENERATE_MODEL, prompt, `Generate ${count} senior-level interview questions about ${thematic.topic}.`, 8192);
-      const jsonMatch = raw.match(/\[[\s\S]*\]/);
-      const questions = JSON.parse(jsonMatch?.[0] ?? raw) as Array<Record<string, unknown>>;
+      const [rawTheoretical, rawCoding] = await Promise.all([
+        callOpenAI(GENERATE_MODEL, THEORETICAL_PROMPT.replace(/{TOPIC}/g, thematic.topic), `Generate 11 theoretical questions about ${thematic.topic}.`, 8192),
+        callOpenAI(GENERATE_MODEL, CODING_PROMPT.replace(/{TOPIC}/g, thematic.topic), `Generate 4 coding questions about ${thematic.topic}.`, 4096),
+      ]);
+
+      const parseQuestions = (raw: string) => {
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        return JSON.parse(jsonMatch?.[0] ?? raw) as Array<Record<string, unknown>>;
+      };
+      const theoretical = parseQuestions(rawTheoretical);
+      const coding = parseQuestions(rawCoding);
+      const questions = [...theoretical, ...coding];
 
       const validTypes = ["code_output", "fix_bug", "code_write", "concept", "system_design", "best_practice", "multiple_choice"] as const;
       type QType = (typeof validTypes)[number];
@@ -269,14 +256,17 @@ export async function generateAllTraining(onProgress?: (msg: string) => void): P
       type QDiff = (typeof validDiffs)[number];
 
       let saved = 0;
+      const insertedIds: string[] = [];
       for (const q of questions) {
         const rawType = String(q.type || "concept");
         const rawDiff = String(q.difficulty || "medium");
         const qType: QType = validTypes.includes(rawType as QType) ? (rawType as QType) : "concept";
         const qDiff: QDiff = validDiffs.includes(rawDiff as QDiff) ? (rawDiff as QDiff) : "medium";
+        const qId = uuid();
+        insertedIds.push(qId);
 
         await db.insert(trainingQuestions).values({
-          id: uuid(),
+          id: qId,
           unitId: unit.id,
           type: qType,
           difficulty: qDiff,
@@ -289,6 +279,30 @@ export async function generateAllTraining(onProgress?: (msg: string) => void): P
           explanation: q.explanation ? String(q.explanation) : null,
         });
         saved++;
+      }
+
+      log(`[Training] Generating ideal answers + TTS for "${unit.title}" (${saved} questions)...`);
+      for (let j = 0; j < questions.length; j++) {
+        const q = questions[j];
+        const qId = insertedIds[j];
+        const qText = String(q.question ?? "");
+        const codeSnip = q.codeSnippet ? String(q.codeSnippet) : null;
+
+        try {
+          const idealAnswer = await generateIdealAnswer(qText, codeSnip, String(q.correctAnswer ?? ""));
+          await db.update(trainingQuestions).set({ idealAnswer }).where(eq(trainingQuestions.id, qId));
+        } catch (err) {
+          log(`[Training] Warning: ideal answer for Q${j + 1} failed: ${err}`);
+        }
+
+        try {
+          const wav = await generateTTSBuffer(qText.slice(0, 8000));
+          const audioFile = path.join(audioDir, `q-${qId}.wav`);
+          fs.writeFileSync(audioFile, wav);
+          await db.update(trainingQuestions).set({ audioPath: `/audio/q-${qId}.wav` }).where(eq(trainingQuestions.id, qId));
+        } catch (e) {
+          log(`[Training] Warning: TTS for Q${j + 1} failed: ${e}`);
+        }
       }
 
       await db.update(trainingUnits).set({ questionCount: saved }).where(eq(trainingUnits.id, unit.id));

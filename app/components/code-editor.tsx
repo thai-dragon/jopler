@@ -1,8 +1,27 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useId } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
+
+function setupMonacoWorkers() {
+  if (typeof window === "undefined") return;
+  const base = `${window.location.origin}/monaco-workers`;
+  const urls: Record<string, string> = {
+    typescript: `${base}/ts.worker-CMbG-7ft.js`,
+    javascript: `${base}/ts.worker-CMbG-7ft.js`,
+    json: `${base}/json.worker-DKiEKt88.js`,
+    css: `${base}/css.worker-HnVq6Ewq.js`,
+    less: `${base}/css.worker-HnVq6Ewq.js`,
+    scss: `${base}/css.worker-HnVq6Ewq.js`,
+    html: `${base}/html.worker-B51mlPHg.js`,
+    handlebars: `${base}/html.worker-B51mlPHg.js`,
+    razor: `${base}/html.worker-B51mlPHg.js`,
+  };
+  (window as Window & { MonacoEnvironment?: { getWorker?: (a: string, b: string) => Worker } }).MonacoEnvironment = {
+    getWorker: (_, label) => new Worker(urls[label] || `${base}/editor.worker-Be8ye1pW.js`),
+  };
+}
 
 const MIN_HEIGHT = 200;
 const MAX_HEIGHT = 900;
@@ -43,6 +62,7 @@ export default function CodeEditor({
   resizable = true,
   showRunButton = true,
 }: CodeEditorProps) {
+  const id = useId().replace(/:/g, "");
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<RunResult | null>(null);
@@ -52,6 +72,11 @@ export default function CodeEditor({
   const resizeStartH = useRef(0);
 
   const handleBeforeMount: BeforeMount = (monaco) => {
+    setupMonacoWorkers(); // Override CDN's worker URLs with same-origin
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
       target: monaco.languages.typescript.ScriptTarget.ES2020,
       module: monaco.languages.typescript.ModuleKind.ESNext,
@@ -83,6 +108,10 @@ declare module 'react-dom' {
 }
 `;
     monaco.languages.typescript.typescriptDefaults.addExtraLib(reactTypes, "file:///node_modules/@types/react/index.d.ts");
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+    });
     monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
       target: monaco.languages.typescript.ScriptTarget.ES2020,
       allowNonTsExtensions: true,
@@ -137,7 +166,7 @@ declare module 'react-dom' {
   }
 
   return (
-    <div className="rounded-lg overflow-hidden border border-gray-700">
+    <div className="rounded-lg overflow-visible border border-gray-700">
       <div className="flex items-center justify-between bg-gray-800 px-3 py-1.5 border-b border-gray-700">
         <span className="text-xs text-gray-400 font-mono uppercase">{language}</span>
         <div className="flex items-center gap-2">
@@ -159,6 +188,7 @@ declare module 'react-dom' {
       <Editor
         height={editorHeight}
         language={language}
+        path={language === "typescript" ? `file:///editor/${id}.ts` : `file:///editor/${id}.js`}
         theme="vs-dark"
         value={value}
         defaultValue={defaultValue}
@@ -167,6 +197,7 @@ declare module 'react-dom' {
         onMount={handleMount}
         options={{
           readOnly,
+          fixedOverflowWidgets: true,
           minimap: { enabled: false },
           fontSize: 13,
           lineNumbers: "on",

@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import vm from "node:vm";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 
 const MAX_TIMEOUT = 5000;
 const MAX_OUTPUT_SIZE = 10 * 1024;
 
-function transpileTS(code: string): string {
+function transpileTS(code: string): { js: string; error?: string } {
+  let tmpPath = "";
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const ts = require("typescript");
+    const tmp = path.join(os.tmpdir(), `ts-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`);
+    fs.writeFileSync(tmp, code);
+    tmpPath = tmp;
+    const program = ts.createProgram([tmp], {
+      noEmit: true,
+      strict: true,
+      skipLibCheck: true,
+      target: ts.ScriptTarget.ES2022,
+    });
+    const diag = ts.getPreEmitDiagnostics(program);
+    const errs = diag.filter((d: { category: number }) => d.category === 1); // DiagnosticCategory.Error
+    if (errs.length > 0) {
+      const first = errs[0];
+      const msg = ts.flattenDiagnosticMessageText(first.messageText, "\n");
+      const f = first.file;
+      const pos = f ? f.getLineAndCharacterOfPosition(first.start ?? 0) : { line: 0, character: 0 };
+      return { js: "", error: `TypeScript error at ${pos.line + 1}:${pos.character + 1}: ${msg}` };
+    }
     const result = ts.transpileModule(code, {
       compilerOptions: {
         target: ts.ScriptTarget.ES2022,
@@ -15,9 +37,11 @@ function transpileTS(code: string): string {
         strict: false,
       },
     });
-    return result.outputText;
-  } catch {
-    return code;
+    return { js: result.outputText };
+  } catch (e: unknown) {
+    return { js: "", error: (e as Error).message };
+  } finally {
+    if (tmpPath && fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
   }
 }
 
@@ -35,7 +59,11 @@ export async function POST(req: NextRequest) {
 
     let jsCode = code;
     if (language === "typescript") {
-      jsCode = transpileTS(code);
+      const out = transpileTS(code);
+      if (out.error) {
+        return NextResponse.json({ stdout: [], result: null, error: out.error, executionTime: 0 });
+      }
+      jsCode = out.js;
     }
 
     const stdout: string[] = [];

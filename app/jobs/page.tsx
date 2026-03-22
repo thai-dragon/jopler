@@ -91,27 +91,42 @@ export default function JobsPage() {
                       {j.source}
                     </span>
                   </td>
-                  <td className="py-2 px-3">
-                    <a href={j.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {j.title}
-                    </a>
-                    <button
-                      onClick={() => setExpanded((s) => {
-                        const n = new Set(s);
-                        if (n.has(j.id)) n.delete(j.id); else n.add(j.id);
-                        return n;
-                      })}
-                      className="ml-2 text-xs text-gray-600 hover:text-gray-400"
-                    >
-                      {isExpanded ? "[-]" : "[+]"}
-                    </button>
+                  <td className="py-2 px-3 max-w-[280px] min-w-0 overflow-hidden">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <a
+                        href={j.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline truncate min-w-0"
+                        title={j.title}
+                      >
+                        {j.title}
+                      </a>
+                      <button
+                        onClick={() => setExpanded((s) => {
+                          const n = new Set(s);
+                          if (n.has(j.id)) n.delete(j.id); else n.add(j.id);
+                          return n;
+                        })}
+                        className="flex-shrink-0 text-xs text-gray-600 hover:text-gray-400"
+                      >
+                        {isExpanded ? "[-]" : "[+]"}
+                      </button>
+                    </span>
                     {isExpanded && j.description && (
                       <div className="mt-2 text-xs text-gray-500 max-h-48 overflow-auto whitespace-pre-wrap">
                         {j.description.slice(0, 1500)}
                       </div>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-gray-400">{j.company || "—"}</td>
+                  <td className="py-2 px-3 text-gray-400 max-w-[220px] min-w-0 overflow-hidden">
+                    <span
+                      className="block truncate"
+                      title={j.company || undefined}
+                    >
+                      {j.company || "—"}
+                    </span>
+                  </td>
                   <td className="py-2 px-3">
                     <span className={
                       j.level === "Senior" ? "text-amber-400" :

@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       ...q,
       options: q.options ? JSON.parse(q.options) : null,
       progress: progressMap.get(q.id) ?? null,
+      idealAnswer: q.idealAnswer ?? null,
     }));
 
     return NextResponse.json(result);
