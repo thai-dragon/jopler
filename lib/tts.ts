@@ -1,6 +1,6 @@
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
 const TTS_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-tts:generateContent";
 
 function pcmToWav(pcmBuffer: Buffer, sampleRate = 24000, numChannels = 1): Buffer {
   const byteRate = sampleRate * numChannels * 2;
