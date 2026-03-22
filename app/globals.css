@@ -94,13 +94,14 @@
 /* Progress dot active ring: gray in light theme (was dark) */
 .light .ring-amber-400 { --tw-ring-color: #737373 !important; }
 .light .focus\:border-amber-500:focus { border-color: #2B2B2B !important; }
-/* Orange (attempted mastery, etc.) */
+/* Orange (attempted mastery) – light bg for card readability */
 .light .text-orange-400 { color: #2B2B2B !important; }
-.light .bg-orange-900\/40 { background-color: #2B2B2B !important; }
-.light .border-orange-500 { border-color: #2B2B2B !important; }
+.light .bg-orange-900\/40 { background-color: #E8E8E8 !important; }
+.light .border-orange-500 { border-color: #737373 !important; }
 /* Dark bg (amber-900/30) needs light text for contrast */
-.light .bg-amber-900\/30,
-.light .bg-amber-900\/40 { color: #e4e4e7 !important; }
+.light .bg-amber-900\/30 { color: #e4e4e7 !important; }
+/* Amber (familiar) – light bg for card readability */
+.light .bg-amber-900\/40 { background-color: #E8E8E8 !important; }
 
 /* Light theme: emerald (Correct answer, success feedback) – dark text on light bg */
 .light .bg-emerald-900\/30,
