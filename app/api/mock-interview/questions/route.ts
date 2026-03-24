@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBillableAi } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { trainingUnits, trainingQuestions } from "@/lib/schema";
 import { eq, inArray } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
-    await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
+    const denied = requireBillableAi(session);
+    if (denied) return denied;
+
     const unitIds = req.nextUrl.searchParams.get("unitIds")?.split(",").filter(Boolean) ?? [];
     if (unitIds.length === 0) return NextResponse.json([]);
 

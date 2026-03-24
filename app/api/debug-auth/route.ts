@@ -12,6 +12,7 @@ export function GET() {
     hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
     nextAuthUrl: base,
     allowDevEmails: process.env.ALLOW_DEV_EMAILS === "true",
+    allowGuestLogin: process.env.ALLOW_GUEST_LOGIN === "true",
     redirectUri: `${base.replace(/\/$/, "")}/api/auth/callback/google`,
   };
   return NextResponse.json(env);

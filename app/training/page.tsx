@@ -28,6 +28,7 @@ export default function TrainingPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [canRunHeavyOps, setCanRunHeavyOps] = useState(false);
 
   const fetchUnits = async () => {
     try {
@@ -38,7 +39,13 @@ export default function TrainingPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchUnits(); }, []);
+  useEffect(() => {
+    fetchUnits();
+    fetch("/api/training/is-admin")
+      .then((r) => r.json())
+      .then((d) => setCanRunHeavyOps(d.canRunHeavyOps === true))
+      .catch(() => {});
+  }, []);
 
   async function generate() {
     setGenerating(true);
@@ -84,13 +91,15 @@ export default function TrainingPage() {
           <h1 className="text-3xl font-bold" style={{ color: "var(--color-text)" }}>Interview Training</h1>
           <p className="text-gray-400 mt-1">Practice questions based on real job market requirements</p>
         </div>
-        <button
-          onClick={generate}
-          disabled={generating}
-          className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 text-white rounded-lg font-medium transition"
-        >
-          {generating ? "Generating..." : units.length === 0 ? "Generate Training" : "Regenerate"}
-        </button>
+        {canRunHeavyOps && (
+          <button
+            onClick={generate}
+            disabled={generating}
+            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 text-white rounded-lg font-medium transition"
+          >
+            {generating ? "Generating..." : units.length === 0 ? "Generate Training" : "Regenerate"}
+          </button>
+        )}
       </div>
 
       {units.length > 0 && (

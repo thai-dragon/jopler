@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireAuthenticated } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { trainingQuestions } from "@/lib/schema";
 import { eq } from "drizzle-orm";
@@ -8,7 +9,10 @@ import { generateIdealAnswer } from "@/lib/gemini-ideal";
 
 export async function GET(req: NextRequest) {
   try {
-    await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
+    const denied = requireAuthenticated(session);
+    if (denied) return denied;
+
     const questionId = req.nextUrl.searchParams.get("questionId");
     if (!questionId)
       return NextResponse.json({ error: "questionId required" }, { status: 400 });

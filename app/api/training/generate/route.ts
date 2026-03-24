@@ -1,8 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { generateAllTraining } from "@/lib/training-ai";
 import { addLog, setStatus } from "@/lib/log-store";
+import { requireAdminHeavyOps } from "@/lib/authz";
 
 export async function POST() {
+  const session = await getServerSession(authOptions);
+  const denied = requireAdminHeavyOps(session);
+  if (denied) return denied;
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctrl) {

@@ -1,8 +1,15 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { parseDjinni } from "@/lib/parsers/djinni";
 import { parseDou } from "@/lib/parsers/dou";
 import { addLog, setStatus, clearLogs } from "@/lib/log-store";
+import { requireAdminHeavyOps } from "@/lib/authz";
 
 export async function POST() {
+  const session = await getServerSession(authOptions);
+  const denied = requireAdminHeavyOps(session);
+  if (denied) return denied;
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {

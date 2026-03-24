@@ -2,6 +2,18 @@ export function getPrimaryAdminEmail(): string {
   return process.env.PRIMARY_ADMIN_EMAIL ?? "";
 }
 
+export function allowGuestLogin(): boolean {
+  return process.env.ALLOW_GUEST_LOGIN === "true";
+}
+
+export function teamDeploymentEnabled(): boolean {
+  return process.env.ENABLE_TEAM === "true";
+}
+
+export function isForPublic(): boolean {
+  return process.env.IS_FOR_PUBLIC === "true";
+}
+
 export function isSuperadmin(email: string | null | undefined): boolean {
   if (!email) return false;
   const primaryAdmin = getPrimaryAdminEmail().trim().toLowerCase();

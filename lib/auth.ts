@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "./db";
 import { allowedEmails } from "./schema";
 import { eq } from "drizzle-orm";
+import { guestEmailFromId, isGuestEmail, sanitizeGuestId } from "./access-policy";
+import { allowGuestLogin } from "./config";
 
 const providers: NextAuthOptions["providers"] = [
   GoogleProvider({
@@ -27,6 +29,22 @@ if (process.env.ALLOW_DEV_EMAILS === "true") {
   );
 }
 
+if (allowGuestLogin()) {
+  providers.push(
+    CredentialsProvider({
+      id: "guest",
+      name: "Guest",
+      credentials: { token: { label: "Token", type: "hidden" } },
+      async authorize(credentials) {
+        const id = sanitizeGuestId(credentials?.token ?? undefined);
+        if (!id) return null;
+        const email = guestEmailFromId(id);
+        return { id: `guest-${id}`, email, name: "Guest" };
+      },
+    })
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   providers,
   secret: process.env.NEXTAUTH_SECRET,
@@ -36,9 +54,15 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       if (!user.email) return false;
       const email = user.email.toLowerCase();
+
+      // NextAuth uses provider "credentials" for all CredentialsProvider ids (guest, dev).
+      if (account?.provider === "credentials" && isGuestEmail(email)) {
+        return allowGuestLogin();
+      }
+
       const primaryAdmin = (process.env.PRIMARY_ADMIN_EMAIL || "").trim().toLowerCase();
       if (primaryAdmin && email === primaryAdmin) return true;
       const rows = await db
@@ -51,12 +75,24 @@ export const authOptions: NextAuthOptions = {
         try {
           const { v4: uuid } = await import("uuid");
           await db.insert(allowedEmails).values({ id: uuid(), email });
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         return true;
       }
       return false;
     },
-    async session({ session }) {
+    async jwt({ token, user, account }) {
+      if (user && account) {
+        token.isGuest =
+          account.provider === "credentials" && !!user.email && isGuestEmail(user.email);
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.isGuest = token.isGuest === true;
+      }
       return session;
     },
   },

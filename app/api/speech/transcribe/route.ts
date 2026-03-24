@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { recordTranscribeHit, requireTranscribe } from "@/lib/authz";
+
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const denied = requireTranscribe(session);
+  if (denied) return denied;
+  const userEmail = session?.user?.email;
+  if (!userEmail) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const key = process.env.GOOGLE_API_KEY;
   if (!key) {
     return NextResponse.json(
@@ -22,6 +35,11 @@ export async function POST(req: NextRequest) {
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length > MAX_AUDIO_BYTES) {
+    return NextResponse.json({ error: "Audio file too large (max 5MB)" }, { status: 400 });
+  }
+  recordTranscribeHit(userEmail);
+
   const base64 = buf.toString("base64");
   const mime = file.type?.startsWith("audio/") ? file.type : "audio/webm";
 

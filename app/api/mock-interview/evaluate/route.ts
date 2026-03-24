@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBillableAi } from "@/lib/authz";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const EVAL_MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
   try {
-    await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
+    const denied = requireBillableAi(session);
+    if (denied) return denied;
+
     const { question, codeSnippet, idealAnswer, userAnswer } = await req.json();
     if (!question || !idealAnswer || !userAnswer) {
       return NextResponse.json({ error: "Missing question, idealAnswer or userAnswer" }, { status: 400 });

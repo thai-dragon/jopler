@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireTeamAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { allowedEmails, trainingProgress, trainingUnits, trainingQuestions } from "@/lib/schema";
 
@@ -16,9 +17,8 @@ function initials(email: string): string {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = await requireTeamAccess(session);
+    if (denied) return denied;
 
     const emails = await db.select().from(allowedEmails).orderBy(allowedEmails.addedAt);
     const progressRows = await db.select().from(trainingProgress);

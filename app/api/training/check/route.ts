@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { checkAnswer } from "@/lib/training-ai";
+import { requireAuthenticated } from "@/lib/authz";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    const denied = requireAuthenticated(session);
+    if (denied) return denied;
+
     const userEmail = session?.user?.email || "anonymous";
 
     const { questionId, userAnswer } = await req.json();

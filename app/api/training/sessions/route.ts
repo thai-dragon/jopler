@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireAuthenticated } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { trainingSessions } from "@/lib/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -29,7 +30,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const userEmail = session?.user?.email || "anonymous";
+    const denied = requireAuthenticated(session);
+    if (denied) return denied;
+
+    const userEmail = session!.user!.email!;
     const { unitId, correctCount, totalCount } = await req.json();
     if (!unitId)
       return NextResponse.json({ error: "unitId required" }, { status: 400 });

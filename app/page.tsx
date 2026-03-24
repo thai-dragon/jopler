@@ -1,12 +1,31 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { isGuestEmail } from "@/lib/access-policy";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [parsing, setParsing] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [canRunHeavyOps, setCanRunHeavyOps] = useState(false);
   const logsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user) return;
+    const guest = session.user.isGuest === true || isGuestEmail(session.user.email);
+    if (guest) router.replace("/jobs");
+  }, [session, status, router]);
+
+  useEffect(() => {
+    fetch("/api/training/is-admin")
+      .then((r) => r.json())
+      .then((d) => setCanRunHeavyOps(d.canRunHeavyOps === true))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (logsRef.current) {
@@ -65,22 +84,24 @@ export default function HomePage() {
       <h1 className="text-3xl font-bold mb-2">Job Parser</h1>
       <p className="text-gray-500 mb-8">Parse frontend/fullstack jobs from Djinni & DOU, then analyze with AI.</p>
 
-      <div className="flex gap-4 mb-8">
-        <button
-          onClick={() => streamSSE("/api/parse", setParsing)}
-          disabled={parsing || summarizing}
-          className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
-        >
-          {parsing ? "Parsing..." : "Parse Jobs"}
-        </button>
-        <button
-          onClick={() => streamSSE("/api/summary", setSummarizing)}
-          disabled={parsing || summarizing}
-          className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
-        >
-          {summarizing ? "Generating..." : "Generate AI Summary"}
-        </button>
-      </div>
+      {canRunHeavyOps && (
+        <div className="flex gap-4 mb-8">
+          <button
+            onClick={() => streamSSE("/api/parse", setParsing)}
+            disabled={parsing || summarizing}
+            className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
+          >
+            {parsing ? "Parsing..." : "Parse Jobs"}
+          </button>
+          <button
+            onClick={() => streamSSE("/api/summary", setSummarizing)}
+            disabled={parsing || summarizing}
+            className="px-6 py-3 bg-[#2B2B2B] hover:bg-[#1a1a1a] disabled:opacity-50 disabled:hover:bg-[#2B2B2B] rounded font-medium transition text-white"
+          >
+            {summarizing ? "Generating..." : "Generate AI Summary"}
+          </button>
+        </div>
+      )}
 
       {logs.length > 0 && (
         <div ref={logsRef} className="p-4 bg-gray-950 border border-gray-800 rounded max-h-[70vh] overflow-auto">

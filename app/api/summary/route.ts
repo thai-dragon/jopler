@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { summaries, metaSummary } from "@/lib/schema";
 import { generateAllSummaries } from "@/lib/ai-summary";
 import { desc } from "drizzle-orm";
 import { addLog, setStatus, clearLogs } from "@/lib/log-store";
+import { requireAdminHeavyOps } from "@/lib/authz";
 
 export async function GET() {
   try {
@@ -17,6 +20,10 @@ export async function GET() {
 }
 
 export async function POST() {
+  const session = await getServerSession(authOptions);
+  const denied = requireAdminHeavyOps(session);
+  if (denied) return denied;
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {

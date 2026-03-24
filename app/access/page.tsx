@@ -16,17 +16,24 @@ export default function AccessPage() {
   const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState("");
   const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
 
   useEffect(() => {
     fetch("/api/training/is-admin")
       .then((r) => r.json())
       .then((d) => setIsSuperadmin(d.isSuperadmin === true))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAdminChecked(true));
   }, []);
 
   async function fetchEmails() {
     const res = await fetch("/api/access");
     const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Failed to load");
+      setEmails([]);
+      return;
+    }
     if (data.emails) {
       setEmails(data.emails);
       setPrimaryAdminEmail(data.primaryAdminEmail ?? "");
@@ -35,7 +42,10 @@ export default function AccessPage() {
     }
   }
 
-  useEffect(() => { fetchEmails(); }, []);
+  useEffect(() => {
+    if (!adminChecked || !isSuperadmin) return;
+    fetchEmails();
+  }, [adminChecked, isSuperadmin]);
 
   async function addEmail() {
     setError("");
@@ -68,12 +78,26 @@ export default function AccessPage() {
     fetchEmails();
   }
 
+  if (!adminChecked) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto text-gray-500 text-sm">Loading…</div>
+    );
+  }
+
+  if (!isSuperadmin) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>Access</h1>
+        <p className="text-gray-500 text-sm">Superadmin only.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>Access</h1>
       <p className="text-gray-500 text-sm mb-6">Manage who can sign in to Jopler</p>
 
-      {isSuperadmin && (
       <div className="flex gap-2 mb-6 items-stretch">
         <input
           value={newEmail}
@@ -90,7 +114,6 @@ export default function AccessPage() {
           Add
         </button>
       </div>
-      )}
 
       {error && (
         <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-sm text-red-400">
@@ -113,7 +136,7 @@ export default function AccessPage() {
                 <span className="text-xs text-gray-500 shrink-0">admin</span>
               )}
             </div>
-            {isSuperadmin && (!primaryAdminEmail || e.email !== primaryAdminEmail) && (
+            {(!primaryAdminEmail || e.email !== primaryAdminEmail) && (
               <button
                 onClick={() => removeEmail(e.email)}
                 className="text-xs text-red-400 hover:text-red-300 transition shrink-0"

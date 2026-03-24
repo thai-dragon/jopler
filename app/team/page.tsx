@@ -41,18 +41,34 @@ const COLORS = ["amber", "blue", "emerald", "purple"];
 export default function TeamPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
     fetch("/api/team")
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 403) {
+          setForbidden(true);
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
-        if (data.members) setMembers(data.members);
+        if (data?.members) setMembers(data.members);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return null;
+
+  if (forbidden) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "var(--color-text)" }}>Team</h1>
+        <p className="text-gray-500 text-sm">This page is not available for your account or is disabled on this deployment.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

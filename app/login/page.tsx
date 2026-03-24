@@ -11,11 +11,15 @@ function LoginContent() {
   const error = params.get("error");
   const [mounted, setMounted] = useState(false);
   const [devLoginAvailable, setDevLoginAvailable] = useState(false);
+  const [guestLoginAvailable, setGuestLoginAvailable] = useState(false);
   useEffect(() => {
     setMounted(true);
     fetch("/api/debug-auth")
       .then((r) => r.json())
-      .then((d) => setDevLoginAvailable(d.allowDevEmails === true))
+      .then((d) => {
+        setDevLoginAvailable(d.allowDevEmails === true);
+        setGuestLoginAvailable(d.allowGuestLogin === true);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -70,6 +74,23 @@ function LoginContent() {
             </svg>
             Sign in with Google
           </button>
+          {guestLoginAvailable && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === "undefined") return;
+                let id = localStorage.getItem("jopler_guest_id");
+                if (!id) {
+                  id = crypto.randomUUID();
+                  localStorage.setItem("jopler_guest_id", id);
+                }
+                signIn("guest", { token: id, callbackUrl: "/jobs" });
+              }}
+              className="w-full mt-3 px-4 py-2 text-gray-300 hover:text-white text-sm border border-gray-600 hover:border-gray-500 rounded-lg transition"
+            >
+              Continue as guest
+            </button>
+          )}
           {devLoginAvailable && (
             <button
               type="button"

@@ -13,6 +13,9 @@ export async function GET() {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!isSuperadmin(session.user.email)) {
+      return NextResponse.json({ error: "Superadmin only" }, { status: 403 });
+    }
     const rows = await db.select().from(allowedEmails).orderBy(allowedEmails.addedAt);
     return NextResponse.json({ emails: rows, primaryAdminEmail: getPrimaryAdminEmail() });
   } catch (err: any) {

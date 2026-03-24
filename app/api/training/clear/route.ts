@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireBillableAi } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { trainingProgress } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
@@ -8,6 +9,9 @@ import { eq, and } from "drizzle-orm";
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    const denied = requireBillableAi(session);
+    if (denied) return denied;
+
     const userEmail = session?.user?.email || "anonymous";
     const unitId = req.nextUrl.searchParams.get("unitId");
     if (!unitId)

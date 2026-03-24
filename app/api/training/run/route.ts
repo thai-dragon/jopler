@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { requireAuthenticated } from "@/lib/authz";
 import vm from "node:vm";
 import fs from "node:fs";
 import path from "node:path";
@@ -47,6 +50,10 @@ function transpileTS(code: string): { js: string; error?: string } {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const denied = requireAuthenticated(session);
+    if (denied) return denied;
+
     const { code, language } = await req.json();
 
     if (!code || typeof code !== "string") {
