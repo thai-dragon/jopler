@@ -15,35 +15,36 @@ const providers: NextAuthOptions["providers"] = [
   }),
 ];
 
-if (process.env.ALLOW_DEV_EMAILS === "true") {
-  providers.push(
-    CredentialsProvider({
-      id: "dev",
-      name: "Dev bypass",
-      credentials: { token: { label: "Token", type: "text" } },
-      async authorize(credentials) {
-        if (credentials?.token !== "dev") return null;
-        return { id: "dev", email: "dev@localhost", name: "Dev User" };
-      },
-    })
-  );
-}
+// Always register Credentials providers. On Render/Vercel etc., `next build` often runs without
+// the same env as production — a build-time `if (ALLOW_*)` would omit the provider from the
+// server bundle forever. Gate access in authorize() + signIn instead.
+providers.push(
+  CredentialsProvider({
+    id: "dev",
+    name: "Dev bypass",
+    credentials: { token: { label: "Token", type: "text" } },
+    async authorize(credentials) {
+      if (process.env.ALLOW_DEV_EMAILS !== "true") return null;
+      if (credentials?.token !== "dev") return null;
+      return { id: "dev", email: "dev@localhost", name: "Dev User" };
+    },
+  })
+);
 
-if (allowGuestLogin()) {
-  providers.push(
-    CredentialsProvider({
-      id: "guest",
-      name: "Guest",
-      credentials: { token: { label: "Token", type: "hidden" } },
-      async authorize(credentials) {
-        const id = sanitizeGuestId(credentials?.token ?? undefined);
-        if (!id) return null;
-        const email = guestEmailFromId(id);
-        return { id: `guest-${id}`, email, name: "Guest" };
-      },
-    })
-  );
-}
+providers.push(
+  CredentialsProvider({
+    id: "guest",
+    name: "Guest",
+    credentials: { token: { label: "Token", type: "hidden" } },
+    async authorize(credentials) {
+      if (!allowGuestLogin()) return null;
+      const id = sanitizeGuestId(credentials?.token ?? undefined);
+      if (!id) return null;
+      const email = guestEmailFromId(id);
+      return { id: `guest-${id}`, email, name: "Guest" };
+    },
+  })
+);
 
 export const authOptions: NextAuthOptions = {
   providers,
@@ -58,9 +59,17 @@ export const authOptions: NextAuthOptions = {
       if (!user.email) return false;
       const email = user.email.toLowerCase();
 
-      // NextAuth uses provider "credentials" for all CredentialsProvider ids (guest, dev).
-      if (account?.provider === "credentials" && isGuestEmail(email)) {
-        return allowGuestLogin();
+      // Guest: must be credentials flow. NextAuth sometimes omits `account` or uses `type: "credentials"`.
+      const isCredentialsFlow =
+        !account ||
+        account.provider === "credentials" ||
+        (account as { type?: string }).type === "credentials";
+      if (allowGuestLogin() && isGuestEmail(email) && isCredentialsFlow) {
+        return true;
+      }
+      // Spoofed guest-shaped email via Google OAuth — not in allowlist
+      if (isGuestEmail(email) && !isCredentialsFlow) {
+        return false;
       }
 
       const primaryAdmin = (process.env.PRIMARY_ADMIN_EMAIL || "").trim().toLowerCase();
@@ -83,9 +92,16 @@ export const authOptions: NextAuthOptions = {
       return false;
     },
     async jwt({ token, user, account }) {
-      if (user && account) {
-        token.isGuest =
-          account.provider === "credentials" && !!user.email && isGuestEmail(user.email);
+      if (user?.email) {
+        const creds =
+          !account ||
+          account.provider === "credentials" ||
+          (account as { type?: string }).type === "credentials";
+        if (allowGuestLogin() && isGuestEmail(user.email) && creds) {
+          token.isGuest = true;
+        } else if (account) {
+          token.isGuest = false;
+        }
       }
       return token;
     },
