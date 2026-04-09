@@ -110,6 +110,14 @@ async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | nul
     const techList = extractTechnologies(title + " " + description);
     const location = $(".location-text, [class*='location']").first().text().trim() || null;
     const remote = description.toLowerCase().includes("remote") ? "Remote" : description.toLowerCase().includes("office") ? "Office" : "Unknown";
+    let publishedAt: string | null = null;
+    try {
+      const ldJson = $("script[type='application/ld+json']").first().html();
+      if (ldJson) {
+        const parsed = JSON.parse(ldJson);
+        publishedAt = parsed.datePosted ?? null;
+      }
+    } catch { /* ignore */ }
 
     return {
       id: uuid(),
@@ -128,7 +136,7 @@ async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | nul
       technologies: JSON.stringify(techList),
       description: description.slice(0, 10000),
       requirements: null,
-      publishedAt: null,
+      publishedAt: publishedAt || null,
     };
   } catch (err) {
     console.error(`[Djinni] Failed to parse ${url}:`, err);
