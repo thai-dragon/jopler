@@ -10,15 +10,15 @@ import { sessionIsGuest } from "@/lib/authz";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const source = searchParams.get("source");
-  const level = searchParams.get("level");
-  const type = searchParams.get("type");
+  const levels = searchParams.getAll("level").filter(Boolean);
+  const types = searchParams.getAll("type").filter(Boolean);
 
   try {
     let rows = await db.select().from(jobs).orderBy(desc(jobs.parsedAt));
 
     if (source) rows = rows.filter((j) => j.source === source);
-    if (level) rows = rows.filter((j) => j.level === level);
-    if (type) rows = rows.filter((j) => j.type === type);
+    if (levels.length) rows = rows.filter((j) => levels.includes(j.level ?? ""));
+    if (types.length) rows = rows.filter((j) => types.includes(j.type ?? ""));
 
     return NextResponse.json(rows);
   } catch (err) {

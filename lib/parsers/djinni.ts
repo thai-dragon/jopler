@@ -84,14 +84,12 @@ async function parseListPage(url: string): Promise<string[]> {
   const html = await fetchPage(BASE + url);
   const $ = cheerio.load(html);
   const links: string[] = [];
-  $("a.profile").each((_, el) => {
-    const href = $(el).attr("href");
-    if (href && href.startsWith("/jobs/")) links.push(BASE + href);
-  });
-  $("a[href*='/jobs/']").each((_, el) => {
-    const href = $(el).attr("href");
-    if (href && href.match(/\/jobs\/\d+/) && !links.includes(BASE + href)) {
-      links.push(href.startsWith("http") ? href : BASE + href);
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    // Only real job pages: /jobs/{id}-{slug}/
+    if (/\/jobs\/\d+/.test(href)) {
+      const full = href.startsWith("http") ? href : BASE + href;
+      links.push(full.split("?")[0]);
     }
   });
   return [...new Set(links)];
@@ -101,23 +99,39 @@ async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | nul
   try {
     const html = await fetchPage(url);
     const $ = cheerio.load(html);
-    const title = $("h1").first().text().trim() || $(".detail--title-wrapper h1").text().trim();
-    if (!title) return null;
-    const descEl = $(".job-additional-info--body, .profile-page-section, .vacancyDescription, .job_descr, [class*='description']");
-    const description = descEl.text().trim() || $("body").text().trim().slice(0, 5000);
-    const company = $(".job-details--title, .detail--company-name, [class*='company']").first().text().trim() || null;
-    const salary = extractSalary($(".public-salary-item, .detail--salary, .salary, [class*='salary']").text() + " " + title);
-    const techList = extractTechnologies(title + " " + description);
-    const location = $(".location-text, [class*='location']").first().text().trim() || null;
-    const remote = description.toLowerCase().includes("remote") ? "Remote" : description.toLowerCase().includes("office") ? "Office" : "Unknown";
-    let publishedAt: string | null = null;
+
+    // Primary source: JSON-LD structured data
+    let ld: Record<string, unknown> = {};
     try {
       const ldJson = $("script[type='application/ld+json']").first().html();
-      if (ldJson) {
-        const parsed = JSON.parse(ldJson);
-        publishedAt = parsed.datePosted ?? null;
-      }
+      if (ldJson) ld = JSON.parse(ldJson);
     } catch { /* ignore */ }
+
+    const title = (ld.title as string) || $("h1").first().text().trim();
+    if (!title) return null;
+
+    const company = (ld.hiringOrganization as { name?: string })?.name
+      || $(".detail--company-name, [class*='company-name']").first().text().trim()
+      || null;
+
+    const publishedAt = (ld.datePosted as string) ?? null;
+
+    // Description from JSON-LD (HTML) — strip tags
+    const rawDesc = (ld.description as string) ?? "";
+    const description = rawDesc
+      ? rawDesc.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      : $("body").text().trim().slice(0, 5000);
+
+    // Remote from structured jobLocationType
+    const locType = ((ld.jobLocationType as string) ?? "").toUpperCase();
+    const remote = locType === "TELECOMMUTE" ? "Remote"
+      : locType === "INPERSON" ? "Office"
+      : description.toLowerCase().includes("remote") ? "Remote"
+      : "Unknown";
+
+    const salary = extractSalary(description + " " + title);
+    const techList = extractTechnologies(title + " " + description);
+    const location = $(".location-text, [class*='location']").first().text().trim() || null;
 
     return {
       id: uuid(),
@@ -136,7 +150,7 @@ async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | nul
       technologies: JSON.stringify(techList),
       description: description.slice(0, 10000),
       requirements: null,
-      publishedAt: publishedAt || null,
+      publishedAt,
     };
   } catch (err) {
     console.error(`[Djinni] Failed to parse ${url}:`, err);

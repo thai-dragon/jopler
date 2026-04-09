@@ -84,11 +84,12 @@ async function parseListPage(url: string): Promise<string[]> {
   const html = await fetchPage(BASE + url);
   const $ = cheerio.load(html);
   const links: string[] = [];
-  $(".l-vacancy a.vt, a[href*='/vacancies/']").each((_, el) => {
-    const href = $(el).attr("href");
-    if (href && href.includes("/vacancies/") && !href.includes("category=")) {
-      const full = href.startsWith("http") ? href : BASE + href;
-      if (!links.includes(full)) links.push(full);
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    const full = href.startsWith("http") ? href : BASE + href;
+    // Only real job pages: /companies/{slug}/vacancies/{id}/
+    if (/\/companies\/[^/]+\/vacancies\/\d+\//.test(full)) {
+      links.push(full.split("?")[0]); // strip query params
     }
   });
   return [...new Set(links)];
