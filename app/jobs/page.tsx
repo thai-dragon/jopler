@@ -26,6 +26,14 @@ function parseTech(t: string | null | undefined): string[] {
   try { return JSON.parse(t); } catch { return []; }
 }
 
+function formatDate(raw: string | null | undefined): string {
+  if (!raw) return "—";
+  const d = new Date(raw);
+  return isNaN(d.getTime())
+    ? raw
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filterSource, setFilterSource] = useState("");
@@ -219,7 +227,7 @@ export default function JobsPage() {
                     </div>
                   </td>
                   <td className="py-2 px-3 text-xs text-gray-500 whitespace-nowrap">
-                    {j.publishedAt ? new Date(j.publishedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "—"}
+                    {formatDate(j.publishedAt)}
                   </td>
                 </tr>
               );
