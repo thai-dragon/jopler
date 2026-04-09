@@ -237,7 +237,7 @@ export default function JobsPage() {
               disabled={sortedJobs.length === 0 || openOffset >= sortedJobs.length}
               onClick={() => {
                 const batch = sortedJobs.slice(openOffset, openOffset + openCount);
-                batch.forEach((j) => window.open(j.sourceUrl, "_blank"));
+                batch.forEach((j, i) => setTimeout(() => window.open(j.sourceUrl, "_blank"), i * 50));
                 setOpenOffset((prev) => prev + batch.length);
               }}
               className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 transition text-gray-200 whitespace-nowrap"
