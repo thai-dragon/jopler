@@ -99,6 +99,7 @@ if (seedEmail) {
   sqlite.exec(`INSERT OR IGNORE INTO allowed_emails (id, email, added_at) VALUES ('seed-1', '${seedEmail}', datetime('now'))`);
 }
 
+try { sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_source_url ON jobs(source_url)"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN test_cases TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN starter_code TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN ideal_answer TEXT"); } catch {}

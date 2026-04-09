@@ -32,14 +32,31 @@ export default function JobsPage() {
   const [filterLevel, setFilterLevel] = useState("");
   const [filterType, setFilterType] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [openCount, setOpenCount] = useState(10);
+  const [openOffset, setOpenOffset] = useState(0);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (filterSource) params.set("source", filterSource);
     if (filterLevel) params.set("level", filterLevel);
     if (filterType) params.set("type", filterType);
-    fetch(`/api/jobs?${params}`).then((r) => r.json()).then(setJobs).catch(() => {});
+    fetch(`/api/jobs?${params}`).then((r) => r.json()).then((data) => { setJobs(data); setOpenOffset(0); }).catch(() => {});
   }, [filterSource, filterLevel, filterType]);
+
+  async function clearJobs() {
+    if (!confirm(`Delete all ${jobs.length} jobs?`)) return;
+    setClearing(true);
+    try {
+      await fetch("/api/jobs", { method: "DELETE" });
+      setJobs([]);
+      setOpenOffset(0);
+    } catch (err) {
+      alert(`Error: ${err}`);
+    } finally {
+      setClearing(false);
+    }
+  }
 
   const levels = [...new Set(jobs.map((j) => j.level).filter(Boolean))];
   const types = [...new Set(jobs.map((j) => j.type).filter(Boolean))];
@@ -47,8 +64,20 @@ export default function JobsPage() {
   return (
     <main className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Jobs ({jobs.length})</h1>
-        <div className="flex gap-3 text-sm">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Jobs ({jobs.length})</h1>
+          {jobs.length > 0 && (
+            <button
+              type="button"
+              onClick={clearJobs}
+              disabled={clearing}
+              className="text-xs text-red-500/70 hover:text-red-400 border border-red-900/40 hover:border-red-800/60 rounded px-2 py-1 transition disabled:opacity-40"
+            >
+              {clearing ? "Clearing…" : "Clear all"}
+            </button>
+          )}
+        </div>
+        <div className="flex gap-3 text-sm items-center">
           <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-3 py-1.5">
             <option value="">All sources</option>
             <option value="djinni">Djinni</option>
@@ -62,6 +91,44 @@ export default function JobsPage() {
             <option value="">All types</option>
             {types.map((t) => <option key={t!} value={t!}>{t}</option>)}
           </select>
+          <div className="flex items-center rounded overflow-hidden border border-gray-700">
+            <button
+              type="button"
+              disabled={jobs.length === 0 || openOffset >= jobs.length}
+              onClick={() => {
+                const batch = jobs.slice(openOffset, openOffset + openCount);
+                batch.forEach((j) => window.open(j.sourceUrl, "_blank"));
+                setOpenOffset((prev) => prev + batch.length);
+              }}
+              className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 transition text-gray-200 whitespace-nowrap"
+            >
+              {openOffset === 0 ? "Open" : `Open next`}
+              {jobs.length > 0 && (
+                <span className="ml-1 text-gray-500 text-xs">
+                  {openOffset}/{jobs.length}
+                </span>
+              )}
+            </button>
+            <select
+              value={openCount}
+              onChange={(e) => { setOpenCount(Number(e.target.value)); setOpenOffset(0); }}
+              className="bg-gray-900 border-l border-gray-700 px-2 py-1.5 text-gray-400"
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            {openOffset > 0 && (
+              <button
+                type="button"
+                onClick={() => setOpenOffset(0)}
+                className="px-2 py-1.5 bg-gray-900 border-l border-gray-700 text-gray-600 hover:text-gray-400 transition text-xs"
+                title="Reset to start"
+              >
+                ↺
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -78,6 +145,7 @@ export default function JobsPage() {
               <th className="py-2 px-3">Location</th>
               <th className="py-2 px-3">Remote</th>
               <th className="py-2 px-3">Technologies</th>
+              <th className="py-2 px-3">Posted</th>
             </tr>
           </thead>
           <tbody>
@@ -149,6 +217,9 @@ export default function JobsPage() {
                       ))}
                       {techs.length > 6 && <span className="text-xs text-gray-600">+{techs.length - 6}</span>}
                     </div>
+                  </td>
+                  <td className="py-2 px-3 text-xs text-gray-500 whitespace-nowrap">
+                    {j.publishedAt ? new Date(j.publishedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" }) : "—"}
                   </td>
                 </tr>
               );
