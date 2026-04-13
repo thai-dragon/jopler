@@ -67,17 +67,36 @@ function extractTechnologies(text: string): string[] {
     "Terraform", "Linux", "Nginx", "Firebase", "Supabase", "Vercel",
   ];
   const found: string[] = [];
-  const lower = text.toLowerCase();
   for (const t of techs) {
-    if (lower.includes(t.toLowerCase())) found.push(t);
+    const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?<![a-zA-Z])${escaped}(?![a-zA-Z])`, "i");
+    if (re.test(text)) found.push(t);
   }
   return [...new Set(found)];
 }
 
 async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.text();
+  const https = await import("https");
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout for ${url}`)), 15000);
+    const req = https.get(url, { headers: HEADERS }, (res) => {
+      if (res.statusCode && (res.statusCode >= 300 && res.statusCode < 400) && res.headers.location) {
+        clearTimeout(timer);
+        fetchPage(res.headers.location).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode && res.statusCode >= 400) {
+        clearTimeout(timer);
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => { clearTimeout(timer); resolve(Buffer.concat(chunks).toString("utf-8")); });
+      res.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    });
+    req.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+  });
 }
 
 async function parseListPage(url: string, log?: (msg: string) => void): Promise<string[]> {

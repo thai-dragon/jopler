@@ -67,17 +67,37 @@ function extractTechnologies(text: string): string[] {
     "Terraform", "Linux", "Nginx", "Firebase", "Supabase", "Vercel",
   ];
   const found: string[] = [];
-  const lower = text.toLowerCase();
   for (const t of techs) {
-    if (lower.includes(t.toLowerCase())) found.push(t);
+    const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?<![a-zA-Z])${escaped}(?![a-zA-Z])`, "i");
+    if (re.test(text)) found.push(t);
   }
   return [...new Set(found)];
 }
 
+// Use native https to bypass Next.js fetch patching
 async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.text();
+  const https = await import("https");
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout for ${url}`)), 15000);
+    const req = https.get(url, { headers: HEADERS }, (res) => {
+      if (res.statusCode && (res.statusCode >= 300 && res.statusCode < 400) && res.headers.location) {
+        clearTimeout(timer);
+        fetchPage(res.headers.location).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode && res.statusCode >= 400) {
+        clearTimeout(timer);
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => { clearTimeout(timer); resolve(Buffer.concat(chunks).toString("utf-8")); });
+      res.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    });
+    req.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+  });
 }
 
 function extractJobLinks(html: string): string[] {
@@ -93,17 +113,62 @@ function extractJobLinks(html: string): string[] {
   return links;
 }
 
-async function parseListPage(url: string, log?: (msg: string) => void): Promise<string[]> {
-  // Fetch initial page to get CSRF token + first batch of links
-  const fullUrl = BASE + url;
-  const pageRes = await fetch(fullUrl, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
-  if (!pageRes.ok) throw new Error(`HTTP ${pageRes.status} for ${fullUrl}`);
-  const html = await pageRes.text();
+// Native https GET that also returns set-cookie headers
+async function fetchPageWithCookies(url: string): Promise<{ html: string; cookies: string[] }> {
+  const https = await import("https");
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout for ${url}`)), 15000);
+    https.get(url, { headers: HEADERS }, (res) => {
+      if (res.statusCode && res.statusCode >= 400) {
+        clearTimeout(timer);
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => {
+        clearTimeout(timer);
+        const raw = res.headers["set-cookie"] ?? [];
+        resolve({ html: Buffer.concat(chunks).toString("utf-8"), cookies: raw });
+      });
+      res.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    }).on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+  });
+}
 
+// Native https POST
+async function postPage(url: string, body: string, hdrs: Record<string, string>): Promise<string> {
+  const https = await import("https");
+  const parsed = new URL(url);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout for ${url}`)), 15000);
+    const req = https.request({
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: "POST",
+      headers: { ...hdrs, "Content-Length": Buffer.byteLength(body).toString() },
+    }, (res) => {
+      if (res.statusCode && res.statusCode >= 400) {
+        clearTimeout(timer);
+        reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => { clearTimeout(timer); resolve(Buffer.concat(chunks).toString("utf-8")); });
+      res.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    });
+    req.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    req.write(body);
+    req.end();
+  });
+}
+
+async function parseListPage(url: string, log?: (msg: string) => void): Promise<string[]> {
+  const fullUrl = BASE + url;
+  const { html, cookies } = await fetchPageWithCookies(fullUrl);
   const allLinks = extractJobLinks(html);
 
-  // Extract CSRF token & cookies for XHR pagination
-  const cookies = pageRes.headers.getSetCookie?.() ?? [];
   const cookieStr = cookies.map((c) => c.split(";")[0]).join("; ");
   const csrfMatch = html.match(/CSRF_TOKEN\s*=\s*["']([^"']+)["']/);
   const csrfToken = csrfMatch?.[1];
@@ -113,28 +178,21 @@ async function parseListPage(url: string, log?: (msg: string) => void): Promise<
     return [...new Set(allLinks)];
   }
 
-  // Load more via XHR until we get all results
   const xhrUrl = xhrUrlMatch[1];
   let num = allLinks.length;
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
     try {
-      const xhrRes = await fetch(xhrUrl, {
-        method: "POST",
-        headers: {
-          ...HEADERS,
-          "X-Requested-With": "XMLHttpRequest",
-          "Content-Type": "application/x-www-form-urlencoded",
-          Cookie: cookieStr,
-          "X-CSRFToken": csrfToken,
-          Referer: fullUrl,
-        },
-        cache: "no-store",
-        body: `csrfmiddlewaretoken=${csrfToken}&count=${num}`,
-        signal: AbortSignal.timeout(15000),
+      const body = `csrfmiddlewaretoken=${csrfToken}&count=${num}`;
+      const raw = await postPage(xhrUrl, body, {
+        ...HEADERS,
+        "X-Requested-With": "XMLHttpRequest",
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: cookieStr,
+        "X-CSRFToken": csrfToken,
+        Referer: fullUrl,
       });
-      if (!xhrRes.ok) break;
-      const json = await xhrRes.json() as { html: string; last: boolean; num: number };
+      const json = JSON.parse(raw) as { html: string; last: boolean; num: number };
       const newLinks = extractJobLinks(json.html);
       allLinks.push(...newLinks);
       num += newLinks.length;
