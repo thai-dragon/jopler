@@ -81,6 +81,7 @@ sqlite.exec(`CREATE TABLE IF NOT EXISTS jobs (
   CREATE TABLE IF NOT EXISTS summaries (
     id TEXT PRIMARY KEY,
     position TEXT NOT NULL,
+    filter_source TEXT,
     job_count INTEGER DEFAULT 0,
     avg_salary_min REAL,
     avg_salary_max REAL,
@@ -104,6 +105,7 @@ try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN test_cases TEXT"); 
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN starter_code TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN ideal_answer TEXT"); } catch {}
 try { sqlite.exec("ALTER TABLE training_questions ADD COLUMN audio_path TEXT"); } catch {}
+try { sqlite.exec("ALTER TABLE summaries ADD COLUMN filter_source TEXT"); } catch {}
 try {
   sqlite.exec(`CREATE TABLE IF NOT EXISTS training_sessions (
     id TEXT PRIMARY KEY,

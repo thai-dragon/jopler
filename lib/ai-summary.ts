@@ -88,7 +88,7 @@ function jobToSummaryText(job: JobRow): string {
   return parts.filter(Boolean).join("\n");
 }
 
-async function generateForGroup(position: string, groupJobs: JobRow[], onProgress?: (msg: string) => void): Promise<void> {
+async function generateForGroup(position: string, groupJobs: JobRow[], onProgress?: (msg: string) => void, filterSource?: string | null): Promise<void> {
   const log = onProgress ?? console.log;
   const jobTexts = groupJobs.map(jobToSummaryText).join("\n\n---\n\n");
   const userMessage = `Position category: ${position}\nTotal jobs: ${groupJobs.length}\n\n${jobTexts}`;
@@ -157,6 +157,7 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
     await db.insert(summaries).values({
       id: uuid(),
       position,
+      filterSource: filterSource ?? null,
       jobCount: groupJobs.length,
       avgSalaryMin: (parsed.avgSalaryMin as number) ?? null,
       avgSalaryMax: (parsed.avgSalaryMax as number) ?? null,
@@ -264,4 +265,56 @@ async function generateMetaSummary(onProgress?: (msg: string) => void): Promise<
   } catch (err) {
     log(`[AI] Meta-summary ERROR: ${err}`);
   }
+}
+
+export type JobInput = {
+  title: string;
+  company?: string | null;
+  level?: string | null;
+  type?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string | null;
+  experience?: string | null;
+  location?: string | null;
+  remote?: string | null;
+  technologies?: string | null;
+  description?: string | null;
+};
+
+export async function generateSummariesFromJobs(
+  inputJobs: JobInput[],
+  filterSource: string,
+  onProgress?: (msg: string) => void,
+): Promise<number> {
+  const log = onProgress ?? console.log;
+
+  if (inputJobs.length === 0) return 0;
+  if (!OPENAI_API_KEY) {
+    log(`[AI Summary] ERROR: OPENAI_API_KEY not set in .env`);
+    return 0;
+  }
+
+  const jobRows = inputJobs.map((j) => ({
+    ...j,
+    id: "",
+    source: "" as "djinni" | "dou",
+    sourceUrl: "",
+    requirements: null,
+    publishedAt: null,
+    parsedAt: null,
+  })) as JobRow[];
+
+  const groups = groupJobs(jobRows);
+  log(`[AI Summary] Filtered jobs: ${inputJobs.length}, groups: ${[...groups.keys()].join(", ")}`);
+
+  let count = 0;
+  for (const [position, posJobs] of groups) {
+    if (posJobs.length < 2) continue;
+    log(`[AI Summary] Generating for: ${position} (${posJobs.length} jobs)`);
+    await generateForGroup(position, posJobs, log, filterSource);
+    count++;
+  }
+
+  return count;
 }

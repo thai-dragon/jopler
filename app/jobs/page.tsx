@@ -76,6 +76,8 @@ function parsePublishedAt(raw: string | null | undefined): number {
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [allLevels, setAllLevels] = useState<string[]>([]);
+  const [allTypes, setAllTypes] = useState<string[]>([]);
   const [filterSource, setFilterSource] = useState("");
   const [filterLevels, setFilterLevels] = useState<string[]>([]);
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
@@ -88,6 +90,14 @@ export default function JobsPage() {
   const [openCount, setOpenCount] = useState(10);
   const [openOffset, setOpenOffset] = useState(0);
   const [clearing, setClearing] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/jobs").then((r) => r.json()).then((data: Job[]) => {
+      setAllLevels([...new Set(data.map((j) => j.level).filter(Boolean))] as string[]);
+      setAllTypes([...new Set(data.map((j) => j.type).filter(Boolean))] as string[]);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -120,8 +130,53 @@ export default function JobsPage() {
     }
   }
 
-  const allLevels = [...new Set(jobs.map((j) => j.level).filter(Boolean))] as string[];
-  const allTypes = [...new Set(jobs.map((j) => j.type).filter(Boolean))] as string[];
+
+  async function generateSummary() {
+    if (!confirm(`Generate AI summary for ${jobs.length} filtered jobs?`)) return;
+    setGenerating(true);
+    try {
+      const payload = jobs.map((j) => ({
+        title: j.title,
+        company: j.company,
+        level: j.level,
+        type: j.type,
+        salaryMin: j.salaryMin,
+        salaryMax: j.salaryMax,
+        salaryCurrency: j.salaryCurrency,
+        experience: j.experience,
+        location: j.location,
+        remote: j.remote,
+        technologies: j.technologies,
+        description: j.description,
+      }));
+      const filterLabel = [filterSource, ...filterLevels, ...filterTypes].filter(Boolean).join(", ") || "all";
+      const res = await fetch("/api/jobs/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobs: payload, filterSource: filterLabel }),
+      });
+      if (!res.ok) {
+        alert(`Error: ${res.statusText}`);
+        return;
+      }
+      const reader = res.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value);
+          const match = text.match(/"done"\s*:\s*true/);
+          if (match) break;
+        }
+      }
+      window.open("/summary", "_blank");
+    } catch (err) {
+      alert(`Error: ${err}`);
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   const sortedJobs = [...jobs].sort((a, b) => {
     if (sortMode === "newest") {
@@ -156,6 +211,16 @@ export default function JobsPage() {
               className="text-xs text-red-500/70 hover:text-red-400 border border-red-900/40 hover:border-red-800/60 rounded px-2 py-1 transition disabled:opacity-40"
             >
               {clearing ? "Clearing…" : "Clear all"}
+            </button>
+          )}
+          {jobs.length > 0 && (
+            <button
+              type="button"
+              onClick={generateSummary}
+              disabled={generating}
+              className="text-xs text-amber-500/80 hover:text-amber-400 border border-amber-900/40 hover:border-amber-800/60 rounded px-2 py-1 transition disabled:opacity-40"
+            >
+              {generating ? "Generating…" : "Generate Summary"}
             </button>
           )}
         </div>
@@ -193,13 +258,12 @@ export default function JobsPage() {
                   {filterLevels.length > 0 && <button type="button" className="text-xs text-amber-500 hover:text-amber-400" onClick={() => setFilterLevels([])}>Clear</button>}
                 </div>
                 {allLevels.map((l) => (
-                  <label key={l} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200">
+                  <div key={l} onClick={() => toggleLevel(l)} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 select-none">
                     <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition ${filterLevels.includes(l) ? "bg-amber-500 border-amber-500" : "border-gray-600"}`}>
                       {filterLevels.includes(l) && <span className="text-[10px] leading-none" style={{ color: "#fff" }}>✓</span>}
                     </span>
-                    <input type="checkbox" className="sr-only" checked={filterLevels.includes(l)} onChange={() => toggleLevel(l)} />
                     {l}
-                  </label>
+                  </div>
                 ))}
               </div>
             )}
@@ -220,13 +284,12 @@ export default function JobsPage() {
                   {filterTypes.length > 0 && <button type="button" className="text-xs text-amber-500 hover:text-amber-400" onClick={() => setFilterTypes([])}>Clear</button>}
                 </div>
                 {allTypes.map((t) => (
-                  <label key={t} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200">
+                  <div key={t} onClick={() => toggleType(t)} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 select-none">
                     <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition ${filterTypes.includes(t) ? "bg-amber-500 border-amber-500" : "border-gray-600"}`}>
                       {filterTypes.includes(t) && <span className="text-[10px] leading-none" style={{ color: "#fff" }}>✓</span>}
                     </span>
-                    <input type="checkbox" className="sr-only" checked={filterTypes.includes(t)} onChange={() => toggleType(t)} />
                     {t}
-                  </label>
+                  </div>
                 ))}
               </div>
             )}

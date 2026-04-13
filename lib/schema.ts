@@ -85,6 +85,7 @@ export const metaSummary = sqliteTable("meta_summary", {
 export const summaries = sqliteTable("summaries", {
   id: text("id").primaryKey(),
   position: text("position").notNull(),
+  filterSource: text("filter_source"),
   jobCount: integer("job_count").default(0),
   avgSalaryMin: real("avg_salary_min"),
   avgSalaryMax: real("avg_salary_max"),

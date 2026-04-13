@@ -6,6 +6,7 @@ import { useTheme } from "../components/theme-provider";
 type Summary = {
   id: string;
   position: string;
+  filterSource?: string | null;
   jobCount: number;
   avgSalaryMin?: number | null;
   avgSalaryMax?: number | null;
@@ -44,6 +45,7 @@ export default function SummaryPage() {
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [metaSummary, setMetaSummary] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<string>("__all__");
   const contentRef = useRef<HTMLDivElement>(null);
 
   async function downloadPDF() {
@@ -102,8 +104,28 @@ export default function SummaryPage() {
       .catch(() => {});
   }, []);
 
-  const lastUpdated = summaries.length > 0
-    ? summaries.reduce((latest, s) => {
+  const filterGroups = (() => {
+    const map = new Map<string, { totalJobs: number; positions: string[] }>();
+    for (const s of summaries) {
+      const key = s.filterSource || "__global__";
+      const entry = map.get(key) ?? { totalJobs: 0, positions: [] };
+      entry.totalJobs += s.jobCount ?? 0;
+      entry.positions.push(s.position);
+      map.set(key, entry);
+    }
+    return map;
+  })();
+
+  const hasFiltered = [...filterGroups.keys()].some((k) => k !== "__global__");
+
+  const visibleSummaries = selectedFilter === "__all__"
+    ? summaries
+    : selectedFilter === "__global__"
+      ? summaries.filter((s) => !s.filterSource)
+      : summaries.filter((s) => s.filterSource === selectedFilter);
+
+  const lastUpdated = visibleSummaries.length > 0
+    ? visibleSummaries.reduce((latest, s) => {
         const d = s.generatedAt ? new Date(s.generatedAt).getTime() : 0;
         return d > latest ? d : latest;
       }, 0)
@@ -129,17 +151,47 @@ export default function SummaryPage() {
             </p>
           )}
         </div>
-        <button
-          onClick={downloadPDF}
-          disabled={downloading}
-          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded font-medium text-sm transition text-white"
-        >
-          {downloading ? "Generating..." : "Download PDF"}
-        </button>
+        <div className="flex items-center gap-3">
+          {hasFiltered && (
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value)}
+              className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-gray-200"
+            >
+              <option value="__all__">All summaries</option>
+              {filterGroups.has("__global__") && (
+                <option value="__global__">
+                  Global ({filterGroups.get("__global__")!.totalJobs} vacancies)
+                </option>
+              )}
+              {[...filterGroups.entries()]
+                .filter(([k]) => k !== "__global__")
+                .sort(([, a], [, b]) => b.totalJobs - a.totalJobs)
+                .map(([key, { totalJobs, positions }]) => (
+                  <option key={key} value={key}>
+                    {key} — {positions.join(", ")} [{totalJobs}]
+                  </option>
+                ))}
+            </select>
+          )}
+          <button
+            onClick={downloadPDF}
+            disabled={downloading}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded font-medium text-sm transition text-white"
+          >
+            {downloading ? "Generating..." : "Download PDF"}
+          </button>
+        </div>
       </div>
 
       <div ref={contentRef} className="px-12 overflow-visible">
-        {metaSummary && (
+        {selectedFilter === "__all__" && metaSummary && (
+          <div className="pdf-page mb-10 px-12 py-8 bg-gray-900 border border-amber-800/50 rounded-lg overflow-visible">
+            <h2 className="text-sm font-medium text-amber-400/90 mb-2">Summary of summaries</h2>
+            <p className="text-gray-300 leading-relaxed whitespace-pre-line">{metaSummary}</p>
+          </div>
+        )}
+        {selectedFilter === "__global__" && metaSummary && (
           <div className="pdf-page mb-10 px-12 py-8 bg-gray-900 border border-amber-800/50 rounded-lg overflow-visible">
             <h2 className="text-sm font-medium text-amber-400/90 mb-2">Summary of summaries</h2>
             <p className="text-gray-300 leading-relaxed whitespace-pre-line">{metaSummary}</p>
@@ -147,7 +199,7 @@ export default function SummaryPage() {
         )}
 
         <div className="space-y-10">
-        {summaries.map((s) => {
+        {visibleSummaries.map((s) => {
           const techScores = parseJson<Record<string, number>>(s.techScores);
           const topReqs = parseJson<string[]>(s.topRequirements);
           const backendTech = parseJson<string[]>(s.topBackendTech);
