@@ -2,8 +2,8 @@ import { v4 as uuid } from "uuid";
 import { db } from "./db";
 import { jobs, summaries, metaSummary } from "./schema";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const MODEL = "gpt-4o-mini";
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
+const MODEL = "gemini-2.5-flash";
 
 const SUMMARY_PROMPT = `You are a job market analyst specializing in IT/tech positions.
 
@@ -93,38 +93,33 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
   const jobTexts = groupJobs.map(jobToSummaryText).join("\n\n---\n\n");
   const userMessage = `Position category: ${position}\nTotal jobs: ${groupJobs.length}\n\n${jobTexts}`;
 
-  log(`[AI] Sending ${groupJobs.length} jobs to OpenAI (${MODEL}) for "${position}"...`);
+  log(`[AI] Sending ${groupJobs.length} jobs to Gemini (${MODEL}) for "${position}"...`);
   log(`[AI] Prompt size: ~${(userMessage.length / 1024).toFixed(1)}KB`);
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GOOGLE_API_KEY}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SUMMARY_PROMPT },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 0.2,
-        max_tokens: 4096,
+        systemInstruction: { parts: [{ text: SUMMARY_PROMPT }] },
+        contents: [{ parts: [{ text: userMessage }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
       }),
       signal: AbortSignal.timeout(120_000),
     });
 
-    const data = await res.json();
+    const data = await res.json() as Record<string, unknown>;
 
     if (!res.ok) {
-      log(`[AI] ERROR for ${position}: ${data.error?.message || JSON.stringify(data.error) || res.statusText}`);
+      const err = data.error as Record<string, unknown> | undefined;
+      log(`[AI] ERROR for ${position}: ${err?.message || JSON.stringify(err) || res.statusText}`);
       return;
     }
 
-    const raw = data.choices?.[0]?.message?.content?.trim() ?? "";
-    const usage = data.usage;
-    log(`[AI] Response received. Tokens: ${usage?.prompt_tokens ?? "?"}→${usage?.completion_tokens ?? "?"} (${usage?.total_tokens ?? "?"} total)`);
+    const candidates = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined;
+    const raw = candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const usage = data.usageMetadata as Record<string, number> | undefined;
+    log(`[AI] Response received. Tokens: ${usage?.promptTokenCount ?? "?"}→${usage?.candidatesTokenCount ?? "?"} (${usage?.totalTokenCount ?? "?"} total)`);
 
     if (!raw) {
       log(`[AI] WARNING: empty response for ${position}`);
@@ -182,8 +177,8 @@ export async function generateAllSummaries(onProgress?: (msg: string) => void): 
 
   if (allJobs.length === 0) return 0;
 
-  if (!OPENAI_API_KEY) {
-    log(`[AI Summary] ERROR: OPENAI_API_KEY not set in .env`);
+  if (!GOOGLE_API_KEY) {
+    log(`[AI Summary] ERROR: GOOGLE_API_KEY not set in .env`);
     return 0;
   }
 
@@ -231,28 +226,23 @@ async function generateMetaSummary(onProgress?: (msg: string) => void): Promise<
   }).join("\n\n");
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GOOGLE_API_KEY}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: META_PROMPT },
-          { role: "user", content: `Summaries:\n\n${input}` },
-        ],
-        temperature: 0.2,
-        max_tokens: 600,
+        systemInstruction: { parts: [{ text: META_PROMPT }] },
+        contents: [{ parts: [{ text: `Summaries:\n\n${input}` }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
       }),
       signal: AbortSignal.timeout(30_000),
     });
 
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+    const data = await res.json() as Record<string, unknown>;
+    const candidates = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined;
+    const content = candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
     if (!res.ok || !content) {
-      log(`[AI] Meta-summary failed: ${data.error?.message || "empty"}`);
+      const err = data.error as Record<string, unknown> | undefined;
+      log(`[AI] Meta-summary failed: ${err?.message || "empty"}`);
       return;
     }
 
@@ -290,8 +280,8 @@ export async function generateSummariesFromJobs(
   const log = onProgress ?? console.log;
 
   if (inputJobs.length === 0) return 0;
-  if (!OPENAI_API_KEY) {
-    log(`[AI Summary] ERROR: OPENAI_API_KEY not set in .env`);
+  if (!GOOGLE_API_KEY) {
+    log(`[AI Summary] ERROR: GOOGLE_API_KEY not set in .env`);
     return 0;
   }
 
