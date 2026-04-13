@@ -103,7 +103,7 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SUMMARY_PROMPT }] },
         contents: [{ parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 65536, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 2048 } },
       }),
       signal: AbortSignal.timeout(120_000),
     });
@@ -134,17 +134,28 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
 
     let parsed: Record<string, unknown>;
     try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(jsonMatch?.[0] ?? raw);
+      parsed = JSON.parse(raw);
     } catch {
-      log(`[AI] WARNING: Invalid JSON for ${position}. First 300 chars: ${raw.substring(0, 300)}`);
-      await db.insert(summaries).values({
-        id: uuid(),
-        position,
-        jobCount: groupJobs.length,
-        rawAnalysis: raw,
-      });
-      return;
+      // Try to fix truncated JSON by closing open braces/brackets
+      let fixed = raw;
+      const opens = (fixed.match(/\{/g) || []).length;
+      const closes = (fixed.match(/\}/g) || []).length;
+      // Trim trailing incomplete key/value, then close braces
+      fixed = fixed.replace(/,\s*"[^"]*$/, "").replace(/,\s*$/, "");
+      for (let i = 0; i < opens - closes; i++) fixed += "}";
+      try {
+        parsed = JSON.parse(fixed);
+        log(`[AI] Recovered truncated JSON for ${position}`);
+      } catch {
+        log(`[AI] WARNING: Invalid JSON for ${position}. First 300 chars: ${raw.substring(0, 300)}`);
+        await db.insert(summaries).values({
+          id: uuid(),
+          position,
+          jobCount: groupJobs.length,
+          rawAnalysis: raw,
+        });
+        return;
+      }
     }
 
     const techScores = parsed.techScores as Record<string, number> | undefined;
@@ -238,7 +249,7 @@ async function generateMetaSummary(onProgress?: (msg: string) => void): Promise<
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: META_PROMPT }] },
         contents: [{ parts: [{ text: `Summaries:\n\n${input}` }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 1024 } },
       }),
       signal: AbortSignal.timeout(30_000),
     });
