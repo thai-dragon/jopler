@@ -5,14 +5,14 @@ import { jobs } from "../schema";
 
 const BASE = "https://djinni.co";
 const SEARCH_URLS = [
-  "/jobs/?primary_keyword=JavaScript&exp_level=3y&exp_level=5y&exp_level=6y",
-  "/jobs/?primary_keyword=JavaScript&exp_level=2y",
-  "/jobs/?primary_keyword=React",
-  "/jobs/?primary_keyword=React&exp_level=3y&exp_level=5y&exp_level=6y",
-  "/jobs/?all-ede=Front-end",
-  "/jobs/?all-ede=Full-stack&primary_keyword=JavaScript",
-  "/jobs/?primary_keyword=Next.js",
-  "/jobs/?primary_keyword=TypeScript",
+  "/jobs/?all_keywords=JavaScript&search_type=basic-search&exp_level=3y&exp_level=5y&exp_level=6y",
+  "/jobs/?all_keywords=JavaScript&search_type=basic-search&exp_level=2y",
+  "/jobs/?all_keywords=React&search_type=basic-search",
+  "/jobs/?all_keywords=React&search_type=basic-search&exp_level=3y&exp_level=5y&exp_level=6y",
+  "/jobs/?all_keywords=Front-end&search_type=basic-search",
+  "/jobs/?all_keywords=Full-stack+JavaScript&search_type=basic-search",
+  "/jobs/?all_keywords=Next.js&search_type=basic-search",
+  "/jobs/?all_keywords=TypeScript&search_type=basic-search",
 ];
 
 const HEADERS = {
