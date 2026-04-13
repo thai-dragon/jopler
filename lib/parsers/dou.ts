@@ -75,32 +75,88 @@ function extractTechnologies(text: string): string[] {
 }
 
 async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
+  const res = await fetch(url, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
 }
 
-async function parseListPage(url: string): Promise<string[]> {
-  const html = await fetchPage(BASE + url);
+function extractJobLinks(html: string): string[] {
   const $ = cheerio.load(html);
   const links: string[] = [];
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") ?? "";
     const full = href.startsWith("http") ? href : BASE + href;
-    // Only real job pages: /companies/{slug}/vacancies/{id}/
     if (/\/companies\/[^/]+\/vacancies\/\d+\//.test(full)) {
-      links.push(full.split("?")[0]); // strip query params
+      links.push(full.split("?")[0]);
     }
   });
-  return [...new Set(links)];
+  return links;
 }
 
-async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | null> {
+async function parseListPage(url: string, log?: (msg: string) => void): Promise<string[]> {
+  // Fetch initial page to get CSRF token + first batch of links
+  const fullUrl = BASE + url;
+  const pageRes = await fetch(fullUrl, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (!pageRes.ok) throw new Error(`HTTP ${pageRes.status} for ${fullUrl}`);
+  const html = await pageRes.text();
+
+  const allLinks = extractJobLinks(html);
+
+  // Extract CSRF token & cookies for XHR pagination
+  const cookies = pageRes.headers.getSetCookie?.() ?? [];
+  const cookieStr = cookies.map((c) => c.split(";")[0]).join("; ");
+  const csrfMatch = html.match(/CSRF_TOKEN\s*=\s*["']([^"']+)["']/);
+  const csrfToken = csrfMatch?.[1];
+  const xhrUrlMatch = html.match(/XHR_VS_URL\s*=\s*["']([^"']+)["']/);
+
+  if (!csrfToken || !xhrUrlMatch) {
+    return [...new Set(allLinks)];
+  }
+
+  // Load more via XHR until we get all results
+  const xhrUrl = xhrUrlMatch[1];
+  let num = allLinks.length;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      const xhrRes = await fetch(xhrUrl, {
+        method: "POST",
+        headers: {
+          ...HEADERS,
+          "X-Requested-With": "XMLHttpRequest",
+          "Content-Type": "application/x-www-form-urlencoded",
+          Cookie: cookieStr,
+          "X-CSRFToken": csrfToken,
+          Referer: fullUrl,
+        },
+        cache: "no-store",
+        body: `csrfmiddlewaretoken=${csrfToken}&count=${num}`,
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!xhrRes.ok) break;
+      const json = await xhrRes.json() as { html: string; last: boolean; num: number };
+      const newLinks = extractJobLinks(json.html);
+      allLinks.push(...newLinks);
+      num += newLinks.length;
+      log?.(`[DOU]   loaded more: +${newLinks.length} jobs (total ${num})`);
+      if (json.last || newLinks.length === 0) break;
+    } catch {
+      break;
+    }
+  }
+
+  return [...new Set(allLinks)];
+}
+
+async function parseJobPage(url: string, log?: (msg: string) => void): Promise<typeof jobs.$inferInsert | null> {
   try {
     const html = await fetchPage(url);
     const $ = cheerio.load(html);
     const title = $("h1.g-h2, h1").first().text().trim();
-    if (!title) return null;
+    if (!title) {
+      log?.(`[DOU]   debug: no title, html length=${html.length}, first 200: ${html.substring(0, 200).replace(/\n/g, " ")}`);
+      return null;
+    }
 
     const descEl = $(".b-typo.vacancy-section, .vacancy-section, .l-vacancy-description, .b-typo");
     const description = descEl.text().trim() || $("body").text().trim().slice(0, 5000);
@@ -144,9 +200,9 @@ export async function parseDou(onProgress?: (msg: string) => void): Promise<numb
   for (const searchUrl of SEARCH_URLS) {
     try {
       log(`[DOU] Fetching list: ${searchUrl}`);
-      const links = await parseListPage(searchUrl);
+      const links = await parseListPage(searchUrl, log);
       links.forEach((l) => allLinks.add(l));
-      log(`[DOU] Found ${links.length} jobs on page`);
+      log(`[DOU] Found ${links.length} jobs (all pages)`);
       await new Promise((r) => setTimeout(r, 1500));
     } catch (err) {
       log(`[DOU] List page failed: ${searchUrl}: ${err}`);
@@ -160,7 +216,7 @@ export async function parseDou(onProgress?: (msg: string) => void): Promise<numb
   for (const url of allLinks) {
     idx++;
     log(`[DOU] (${idx}/${allLinks.size}) Parsing: ${url}`);
-    const job = await parseJobPage(url);
+    const job = await parseJobPage(url, log);
     if (job) {
       const techs = job.technologies ? JSON.parse(job.technologies) : [];
       const sal = job.salaryMin ? `$${job.salaryMin}-$${job.salaryMax}` : "no salary";

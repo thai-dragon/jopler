@@ -91,6 +91,7 @@ export default function JobsPage() {
   const [openOffset, setOpenOffset] = useState(0);
   const [clearing, setClearing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
 
   useEffect(() => {
     fetch("/api/jobs").then((r) => r.json()).then((data: Job[]) => {
@@ -300,10 +301,17 @@ export default function JobsPage() {
               disabled={sortedJobs.length === 0 || openOffset >= sortedJobs.length}
               onClick={() => {
                 const batch = sortedJobs.slice(openOffset, openOffset + openCount);
-                batch.forEach((j, i) => {
-                  setTimeout(() => window.open(j.sourceUrl, j.id), i * 300);
-                });
-                setOpenOffset((prev) => prev + batch.length);
+                let blocked = false;
+                for (const j of batch) {
+                  const w = window.open(j.sourceUrl, j.id);
+                  if (!w || w.closed) { blocked = true; break; }
+                }
+                if (blocked) {
+                  setPopupBlocked(true);
+                } else {
+                  setPopupBlocked(false);
+                  setOpenOffset((prev) => prev + batch.length);
+                }
               }}
               className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-40 transition text-gray-200 whitespace-nowrap"
             >
@@ -335,6 +343,11 @@ export default function JobsPage() {
             )}
           </div>
         </div>
+        {popupBlocked && (
+          <div className="mt-2 px-3 py-2 bg-yellow-900/40 border border-yellow-700 rounded text-yellow-300 text-sm">
+            Popup blocked by browser. Allow popups for this site: click the blocked-popup icon in address bar, or go to Settings → Privacy → Pop-ups.
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto">

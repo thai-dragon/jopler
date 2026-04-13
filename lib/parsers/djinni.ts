@@ -75,24 +75,51 @@ function extractTechnologies(text: string): string[] {
 }
 
 async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
+  const res = await fetch(url, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.text();
 }
 
-async function parseListPage(url: string): Promise<string[]> {
-  const html = await fetchPage(BASE + url);
-  const $ = cheerio.load(html);
-  const links: string[] = [];
-  $("a[href]").each((_, el) => {
-    const href = $(el).attr("href") ?? "";
-    // Only real job pages: /jobs/{id}-{slug}/
-    if (/\/jobs\/\d+/.test(href)) {
-      const full = href.startsWith("http") ? href : BASE + href;
-      links.push(full.split("?")[0]);
+async function parseListPage(url: string, log?: (msg: string) => void): Promise<string[]> {
+  const allLinks: string[] = [];
+  let currentUrl = url;
+  let page = 1;
+
+  while (currentUrl) {
+    const html = await fetchPage(BASE + currentUrl);
+    const $ = cheerio.load(html);
+
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href") ?? "";
+      if (/\/jobs\/\d+/.test(href)) {
+        const full = href.startsWith("http") ? href : BASE + href;
+        allLinks.push(full.split("?")[0]);
+      }
+    });
+
+    // Find next page link (hrefs are relative like "?...&page=2")
+    let nextUrl: string | null = null;
+    const basePath = currentUrl.split("?")[0]; // e.g. "/jobs/"
+    $("a[href*='page=']").each((_, el) => {
+      const href = $(el).attr("href") ?? "";
+      const m = href.match(/page=(\d+)/);
+      if (m && parseInt(m[1], 10) === page + 1) {
+        // Resolve relative URL: "?foo&page=2" → "/jobs/?foo&page=2"
+        nextUrl = href.startsWith("/") ? href : basePath + href;
+      }
+    });
+
+    if (nextUrl) {
+      page++;
+      currentUrl = nextUrl;
+      log?.(`[Djinni]   following page ${page} (${allLinks.length} links so far)`);
+      await new Promise((r) => setTimeout(r, 1000));
+    } else {
+      break;
     }
-  });
-  return [...new Set(links)];
+  }
+
+  return [...new Set(allLinks)];
 }
 
 async function parseJobPage(url: string): Promise<typeof jobs.$inferInsert | null> {
@@ -165,9 +192,9 @@ export async function parseDjinni(onProgress?: (msg: string) => void): Promise<n
   for (const searchUrl of SEARCH_URLS) {
     try {
       log(`[Djinni] Fetching list: ${searchUrl}`);
-      const links = await parseListPage(searchUrl);
+      const links = await parseListPage(searchUrl, log);
       links.forEach((l) => allLinks.add(l));
-      log(`[Djinni] Found ${links.length} jobs on page`);
+      log(`[Djinni] Found ${links.length} jobs (all pages)`);
       await new Promise((r) => setTimeout(r, 1500));
     } catch (err) {
       log(`[Djinni] List page failed: ${searchUrl}: ${err}`);
