@@ -103,7 +103,7 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SUMMARY_PROMPT }] },
         contents: [{ parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: "application/json" },
       }),
       signal: AbortSignal.timeout(120_000),
     });
@@ -116,8 +116,14 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
       return;
     }
 
-    const candidates = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined;
-    const raw = candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const candidates = data.candidates as Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }> | undefined;
+    // Skip thinking parts, get only text parts
+    const textParts = candidates?.[0]?.content?.parts?.filter((p) => !p.thought) ?? [];
+    const raw = textParts.map((p) => p.text).join("").trim();
+    const finishReason = candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== "STOP") {
+      log(`[AI] WARNING: finishReason=${finishReason} for ${position}`);
+    }
     const usage = data.usageMetadata as Record<string, number> | undefined;
     log(`[AI] Response received. Tokens: ${usage?.promptTokenCount ?? "?"}→${usage?.candidatesTokenCount ?? "?"} (${usage?.totalTokenCount ?? "?"} total)`);
 
@@ -131,7 +137,7 @@ async function generateForGroup(position: string, groupJobs: JobRow[], onProgres
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch?.[0] ?? raw);
     } catch {
-      log(`[AI] WARNING: Invalid JSON for ${position}, saving raw text`);
+      log(`[AI] WARNING: Invalid JSON for ${position}. First 300 chars: ${raw.substring(0, 300)}`);
       await db.insert(summaries).values({
         id: uuid(),
         position,
