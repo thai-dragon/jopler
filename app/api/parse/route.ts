@@ -5,6 +5,9 @@ import { parseDou } from "@/lib/parsers/dou";
 import { addLog, setStatus, clearLogs } from "@/lib/log-store";
 import { requireAdminHeavyOps } from "@/lib/authz";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 export async function POST() {
   const session = await getServerSession(authOptions);
   const denied = requireAdminHeavyOps(session);
